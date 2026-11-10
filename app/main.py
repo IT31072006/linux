@@ -114,7 +114,12 @@ async def prometheus_middleware(request: Request, call_next: Callable):
     return response
 
 @app.get("/")
-def read_root():
+def read_root(request: Request):
+    accept = request.headers.get("accept", "")
+    frontend_index = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "index.html")
+    if "text/html" in accept and os.path.exists(frontend_index):
+        with open(frontend_index, "r", encoding="utf-8") as f:
+            return Response(content=f.read(), media_type="text/html")
     return {
         "status": "online",
         "service": "DevOps Linux API",
