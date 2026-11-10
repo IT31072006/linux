@@ -1,0 +1,20 @@
+apiVersion: 1
+
+datasources:
+  # 1. Prometheus Time-Series Metrics
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+
+  # 2. Loki Centralized Log Aggregation
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    isDefault: false
+    editable: false
+    jsonData:
+      maxLines: 1000

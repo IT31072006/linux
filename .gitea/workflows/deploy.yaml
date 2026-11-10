@@ -1,0 +1,111 @@
+name: CI/CD Pipeline & Automated Deployment
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+
+env:
+  REGISTRY_IMAGE: devops-app
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+jobs:
+  # ==========================================
+  # STAGE 1: Code Quality & Automated Testing
+  # ==========================================
+  test:
+    name: Lint & Unit Testing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v3
+
+      - name: Set up Python Runtime
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 pytest httpx -r app/requirements.txt
+
+      - name: Static Code Analysis (Lint)
+        run: |
+          echo ">>> [CI/CD] Chạy Flake8 kiểm tra cú pháp và PEP8 conventions..."
+          # Dừng build nếu có lỗi syntax hoặc undefined names
+          flake8 app --count --select=E9,F63,F7,F82 --show-source --statistics
+          # Cảnh báo các lỗi styling thông thường
+          flake8 app --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      - name: Execute Pytest Suite
+        run: |
+          echo ">>> [CI/CD] Khởi chạy Unit Test Suite..."
+          pytest -v app/tests/
+
+  # ==========================================
+  # STAGE 2: Build, Deploy & Healthcheck Gate
+  # ==========================================
+  deploy:
+    name: Build & Zero-Downtime Deploy
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set Image Tag and Metadata
+        id: meta
+        run: |
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          echo "IMAGE_TAG=${SHORT_SHA}" >> $GITHUB_ENV
+          echo "TIMESTAMP=$(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+
+      - name: Build Docker Container Image
+        run: |
+          echo ">>> [CI/CD] Building Docker Image: devops-app:${IMAGE_TAG}..."
+          docker build -t devops-app:${IMAGE_TAG} -t devops-app:latest ./app
+
+      - name: Apply Rolling Update to Docker Compose
+        run: |
+          echo ">>> [CI/CD] Cập nhật .env với version mới..."
+          sed -i "s/^APP_VERSION=.*/APP_VERSION=${IMAGE_TAG}/" .env || echo "APP_VERSION=${IMAGE_TAG}" >> .env
+          sed -i "s/^APP_CONTAINER_IMAGE=.*/APP_CONTAINER_IMAGE=devops-app:${IMAGE_TAG}/" .env || echo "APP_CONTAINER_IMAGE=devops-app:${IMAGE_TAG}" >> .env
+          
+          echo ">>> [CI/CD] Khởi động container app với image mới..."
+          docker compose up -d --no-deps app
+          
+          echo ">>> [CI/CD] Reload Nginx không downtime (SIGHUP)..."
+          docker compose exec -T nginx nginx -s reload
+
+      - name: Automated Healthcheck & Rollback Verification
+        run: |
+          echo ">>> [CI/CD] Kích hoạt kịch bản Healthcheck & Auto-Rollback..."
+          chmod +x scripts/healthcheck_rollback.sh
+          ./scripts/healthcheck_rollback.sh
+
+      - name: Send Telegram Success Notification
+        if: success()
+        run: |
+          MESSAGE="✅ *CI/CD DEPLOYMENT THÀNH CÔNG*%0A%0A*Repo:* \`${{ github.repository }}\`%0A*Commit:* \`${{ github.sha }}\`%0A*Author:* ${{ github.actor }}%0A*Tag:* \`${IMAGE_TAG}\`%0A*Status:* Healthy (Nginx & FastAPI online)"
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${TELEGRAM_CHAT_ID}" \
+            -d "text=${MESSAGE}" \
+            -d "parse_mode=Markdown" > /dev/null || true
+
+      - name: Send Telegram Failure Notification
+        if: failure()
+        run: |
+          MESSAGE="❌ *CI/CD DEPLOYMENT THẤT BẠI*%0A%0A*Repo:* \`${{ github.repository }}\`%0A*Commit:* \`${{ github.sha }}\`%0A*Author:* ${{ github.actor }}%0A*Action:* Rollback đã được kích hoạt tự động!"
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${TELEGRAM_CHAT_ID}" \
+            -d "text=${MESSAGE}" \
+            -d "parse_mode=Markdown" > /dev/null || true
+

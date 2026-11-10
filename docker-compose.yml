@@ -1,0 +1,278 @@
+networks:
+  frontend_net:
+    driver: bridge
+    name: devops_frontend_net
+  backend_net:
+    driver: bridge
+    internal: true # Bảo mật: Chặn hoàn toàn truy cập từ bên ngoài internet vào DB
+    name: devops_backend_net
+  monitoring_net:
+    driver: bridge
+    name: devops_monitoring_net
+
+volumes:
+  pg_data:
+    name: devops_pg_data
+  prometheus_data:
+    name: devops_prometheus_data
+  grafana_data:
+    name: devops_grafana_data
+  loki_data:
+    name: devops_loki_data
+
+services:
+  # ==========================================
+  # 1. DATABASE SERVICE (PostgreSQL 16)
+  # ==========================================
+  db:
+    image: postgres:16-alpine
+    container_name: devops_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-devops_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-devops_secure_pass_2026}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks:
+      - backend_net
+    # Không mở port ra host để đảm bảo nguyên lý Defense in Depth
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-devops_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ==========================================
+  # 2. BACKEND API SERVICE (FastAPI Python)
+  # ==========================================
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    image: ${APP_CONTAINER_IMAGE:-devops-app:1.0.0}
+    container_name: devops_app
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      APP_VERSION: ${APP_VERSION:-1.0.0}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-devops_db}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-devops_secure_pass_2026}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend_net
+      - frontend_net
+      - monitoring_net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ==========================================
+  # 3. REVERSE PROXY & GATEWAY (Nginx)
+  # ==========================================
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: devops_nginx
+    restart: unless-stopped
+    ports:
+      - "${HOST_HTTP_PORT:-80}:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - frontend_net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ==========================================
+  # 4. OBSERVABILITY: Host Metrics (Node Exporter)
+  # ==========================================
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: devops_node_exporter
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - monitoring_net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.2"
+          memory: 128M
+
+  # ==========================================
+  # 5. OBSERVABILITY: Container Metrics (cAdvisor)
+  # ==========================================
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    container_name: devops_cadvisor
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    devices:
+      - /dev/kmsg
+    networks:
+      - monitoring_net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.3"
+          memory: 256M
+
+  # ==========================================
+  # 6. OBSERVABILITY: Metrics Store (Prometheus)
+  # ==========================================
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: devops_prometheus
+    restart: unless-stopped
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+    networks:
+      - monitoring_net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+
+  # ==========================================
+  # 7. OBSERVABILITY: Visualization (Grafana)
+  # ==========================================
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: devops_grafana
+    restart: unless-stopped
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin_devops_password}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - loki
+    networks:
+      - monitoring_net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  # ==========================================
+  # 8. OBSERVABILITY: Centralized Log Store (Loki)
+  # ==========================================
+  loki:
+    image: grafana/loki:2.9.4
+    container_name: devops_loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./monitoring/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - monitoring_net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 200M # Tối ưu dung lượng RAM < 256MB theo yêu cầu
+
+  # ==========================================
+  # 9. OBSERVABILITY: Log Shipper Agent (Promtail)
+  # ==========================================
+  promtail:
+    image: grafana/promtail:2.9.4
+    container_name: devops_promtail
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - ./logs/nginx:/var/log/nginx:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    networks:
+      - monitoring_net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.2"
+          memory: 128M
+

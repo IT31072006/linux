@@ -1,0 +1,88 @@
+# ==============================================================================
+# Cấu hình Promtail - Log Shipping Agent
+# Thu thập log từ Nginx JSON access log & Docker containers qua Docker socket
+# ==============================================================================
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: warn
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    batchwait: 1s
+    batchsize: 102400
+
+scrape_configs:
+  # ==========================================
+  # 1. SCRAPE NGINX ACCESS LOG (JSON PARSER)
+  # ==========================================
+  - job_name: nginx-access
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: nginx
+          service: nginx-gateway
+          __path__: /var/log/nginx/access.log
+
+    pipeline_stages:
+      # Bước 1: Parse định dạng JSON cấu hình trong nginx.conf
+      - json:
+          expressions:
+            time_local: time_local
+            client_ip: client_ip
+            method: request_method
+            uri: request_uri
+            status: status
+            body_bytes: body_bytes_sent
+            request_time: request_time
+            upstream_time: upstream_response_time
+            user_agent: http_user_agent
+
+      # Bước 2: Tạo label index cho Loki để filter siêu nhanh (LogQL: {status="429"})
+      - labels:
+          status:
+          method:
+
+      # Bước 3: Đặt timestamp chuẩn theo thời gian thực của Nginx
+      - timestamp:
+          source: time_local
+          format: RFC3339
+
+  # ==========================================
+  # 2. SCRAPE NGINX ERROR LOG
+  # ==========================================
+  - job_name: nginx-error
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: nginx
+          service: nginx-gateway
+          level: error
+          __path__: /var/log/nginx/error.log
+
+  # ==========================================
+  # 3. SCRAPE DOCKER CONTAINERS LOGS (VIA DOCKER SOCKET)
+  # ==========================================
+  - job_name: docker-containers
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      # Lấy tên container sạch (bỏ dấu '/' ở đầu)
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      # Gán luồng stdout / stderr
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: 'stream'
+      # Bỏ qua chính promtail và loki để tránh log loop
+      - source_labels: ['container']
+        regex: 'devops_promtail|devops_loki'
+        action: drop
+

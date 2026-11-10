@@ -1,0 +1,126 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": true,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "Linux Host CPU Usage (%) - Prometheus",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[1m])) * 100)",
+          "legendFormat": "Host CPU Busy %",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "id": 2,
+      "title": "Linux Host Memory Usage (MB) - Prometheus",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / 1024 / 1024",
+          "legendFormat": "Used RAM (MB)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "id": 3,
+      "title": "FastAPI Request Rate by Status Code - Prometheus",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total[1m])) by (endpoint, status_code)",
+          "legendFormat": "{{endpoint}} [{{status_code}}]",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "id": 4,
+      "title": "Docker Containers Memory Usage (MB) - cAdvisor",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "container_memory_usage_bytes{name=~\"app|nginx|db|loki|promtail\"} / 1024 / 1024",
+          "legendFormat": "{{name}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 16 },
+      "id": 5,
+      "title": "Centralized Live Logs Stream (Nginx & Containers) - Grafana Loki",
+      "type": "logs",
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [
+        {
+          "expr": "{job=~\"nginx|docker-containers\"} |= \"$search\"",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showLabels": true,
+        "wrapLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none"
+      }
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["devops", "linux", "cadvisor", "loki", "promtail"],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "value": ""
+        },
+        "description": "Lọc từ khóa log (ví dụ: error, 429, GET, POST, backup)",
+        "hide": 0,
+        "label": "Tìm kiếm Log (Filter)",
+        "name": "search",
+        "options": [
+          { "selected": true, "text": "", "value": "" },
+          { "selected": false, "text": "429", "value": "429" },
+          { "selected": false, "text": "error", "value": "error" },
+          { "selected": false, "text": "GET", "value": "GET" },
+          { "selected": false, "text": "POST", "value": "POST" }
+        ],
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      }
+    ]
+  },
+  "time": { "from": "now-15m", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "DevOps Linux Full Observability (Metrics & Logs)",
+  "version": 2
+}

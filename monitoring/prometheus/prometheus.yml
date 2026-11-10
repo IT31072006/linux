@@ -1,0 +1,27 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  # 1. Giám sát chính Prometheus
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # 2. Giám sát phần cứng và OS Linux (CPU, RAM, Disk I/O, Network)
+  - job_name: 'node_exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # 3. Giám sát tài nguyên cgroup của từng Docker Container
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+  # 4. Giám sát APM của ứng dụng FastAPI
+  - job_name: 'fastapi_app'
+    metrics_path: '/metrics'
+    scrape_interval: 3s
+    static_configs:
+      - targets: ['app:8000']
+

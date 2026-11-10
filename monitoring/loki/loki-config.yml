@@ -1,0 +1,60 @@
+# ==============================================================================
+# Cấu hình Grafana Loki - Centralized Log Aggregation Engine
+# Tối ưu hóa bộ nhớ RAM (< 200MB) và lưu trữ cục bộ (Filesystem TSDB)
+# ==============================================================================
+
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+  log_level: warn
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+query_range:
+  results_cache:
+    cache:
+      embedded_cache:
+        enabled: true
+        max_size_mb: 32
+
+schema_config:
+  configs:
+    - from: 2023-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+storage_config:
+  tsdb:
+    dir: /loki/tsdb
+  filesystem:
+    directory: /loki/chunks
+
+compactor:
+  working_directory: /loki/compactor
+  retention_enabled: true
+  delete_request_store: filesystem
+
+limits_config:
+  retention_period: 168h # Tự động xóa log cũ hơn 7 ngày (168 giờ)
+  reject_old_samples: true
+  reject_old_samples_max_age: 168h
+  ingestion_rate_mb: 4
+  ingestion_burst_size_mb: 8
+  max_query_series: 500
+
