@@ -1,0 +1,8 @@
+[extend]
+
+[allowlist]
+description = "Cho phép các file mẫu cấu hình và tài liệu hướng dẫn"
+paths = [
+  '''.*\.env\.example$''',
+  '''README\.md$'''
+]

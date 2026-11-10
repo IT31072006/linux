@@ -1,13 +1,15 @@
-name: CI/CD Pipeline & Automated Deployment
+name: CI/CD & DevSecOps Automated Pipeline
 
 on:
   push:
     branches:
       - main
       - master
+      - developer
   pull_request:
     branches:
       - main
+      - developer
 
 env:
   REGISTRY_IMAGE: devops-app
@@ -19,7 +21,7 @@ jobs:
   # STAGE 1: Code Quality & Automated Testing
   # ==========================================
   test:
-    name: Lint & Unit Testing
+    name: 1. Lint & Unit Testing
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Source Code
@@ -36,25 +38,78 @@ jobs:
           python -m pip install --upgrade pip
           pip install flake8 pytest httpx -r app/requirements.txt
 
-      - name: Static Code Analysis (Lint)
+      - name: Static Code Analysis (Flake8)
         run: |
-          echo ">>> [CI/CD] Chạy Flake8 kiểm tra cú pháp và PEP8 conventions..."
-          # Dừng build nếu có lỗi syntax hoặc undefined names
+          echo ">>> [CI/CD] Chạy Flake8 kiểm tra cú pháp và quy chuẩn PEP8..."
           flake8 app --count --select=E9,F63,F7,F82 --show-source --statistics
-          # Cảnh báo các lỗi styling thông thường
           flake8 app --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
       - name: Execute Pytest Suite
         run: |
-          echo ">>> [CI/CD] Khởi chạy Unit Test Suite..."
-          pytest -v app/tests/
+          echo ">>> [CI/CD] Khởi chạy bộ kiểm thử tự động Unit Tests..."
+          PYTHONPATH=. pytest -v app/tests/
 
   # ==========================================
-  # STAGE 2: Build, Deploy & Healthcheck Gate
+  # STAGE 2: DevSecOps Security Gate (Gitleaks & Trivy)
+  # ==========================================
+  security_scan:
+    name: 2. DevSecOps Security Scan
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Lấy toàn bộ commit history để Gitleaks quét lịch sử
+
+      # 2.1: Quét lộ lọt Secret / Token / Private Key qua Gitleaks
+      - name: Run Gitleaks Secret Scanner
+        run: |
+          echo "=========================================================="
+          echo ">>> [DevSecOps] Bắt đầu quét Secret lọt lộ mã nguồn với Gitleaks..."
+          echo "=========================================================="
+          docker run --rm -v "${{ github.workspace }}:/repo" \
+            zricethezav/gitleaks:latest detect --source="/repo" -v --config="/repo/.giteaks.toml" || \
+          docker run --rm -v "${{ github.workspace }}:/repo" \
+            zricethezav/gitleaks:latest detect --source="/repo" -v
+
+      # 2.2: Build Candidate Docker Image để quét lỗ hổng
+      - name: Build Candidate Image for CVE Scanning
+        run: |
+          echo ">>> [DevSecOps] Build Docker Image tạm để quét lỗ hổng..."
+          docker build -t devops-app:scan ./app
+
+      # 2.3: Quét lỗ hổng Base Image & Python Packages bằng Aqua Trivy
+      - name: Run Aqua Security Trivy Vulnerability Scan
+        run: |
+          echo "=========================================================="
+          echo ">>> [DevSecOps] Quét lỗ hổng bảo mật Base Image & Dependencies với Aqua Trivy..."
+          echo "=========================================================="
+          # Quét mức HIGH để in báo cáo cảnh báo (không chặn build)
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:latest image --severity HIGH --format table devops-app:scan || true
+
+          # Quét mức CRITICAL: Nếu phát hiện lỗ hổng nghiêm trọng, chặn Pipeline ngay lập tức (Exit Code 1)!
+          echo ">>> [DevSecOps] Kiểm tra ngưỡng nghiêm trọng (CRITICAL Gate)..."
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:latest image --severity CRITICAL --exit-code 1 --format table devops-app:scan
+
+      # 2.4: Bắn cảnh báo Telegram khẩn cấp nếu Stage Security Scan bị Fail
+      - name: Send DevSecOps Failure Alert to Telegram
+        if: failure()
+        run: |
+          MESSAGE="🚨 *DEVSECOPS SECURITY GATE FAILED*%0A%0A*Repo:* \`${{ github.repository }}\`%0A*Commit:* \`${{ github.sha }}\`%0A*Author:* ${{ github.actor }}%0A*Nguyên nhân:* Phát hiện lỗ hổng mức độ *CRITICAL* qua Trivy Scanner hoặc phát hiện lộ Token/Password qua Gitleaks!%0A*Hành động:* Pipeline đã bị *CHẶN ĐỨNG NGAY LẬP TỨC* để bảo vệ môi trường Production."
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${TELEGRAM_CHAT_ID}" \
+            -d "text=${MESSAGE}" \
+            -d "parse_mode=Markdown" > /dev/null || true
+
+  # ==========================================
+  # STAGE 3: Build, Zero-Downtime Deploy & Rollback
   # ==========================================
   deploy:
-    name: Build & Zero-Downtime Deploy
-    needs: test
+    name: 3. Build & Zero-Downtime Deploy
+    needs: [test, security_scan]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
@@ -68,7 +123,7 @@ jobs:
           echo "IMAGE_TAG=${SHORT_SHA}" >> $GITHUB_ENV
           echo "TIMESTAMP=$(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
 
-      - name: Build Docker Container Image
+      - name: Build Official Docker Container Image
         run: |
           echo ">>> [CI/CD] Building Docker Image: devops-app:${IMAGE_TAG}..."
           docker build -t devops-app:${IMAGE_TAG} -t devops-app:latest ./app
@@ -94,7 +149,7 @@ jobs:
       - name: Send Telegram Success Notification
         if: success()
         run: |
-          MESSAGE="✅ *CI/CD DEPLOYMENT THÀNH CÔNG*%0A%0A*Repo:* \`${{ github.repository }}\`%0A*Commit:* \`${{ github.sha }}\`%0A*Author:* ${{ github.actor }}%0A*Tag:* \`${IMAGE_TAG}\`%0A*Status:* Healthy (Nginx & FastAPI online)"
+          MESSAGE="✅ *CI/CD & DEVSECOPS DEPLOYMENT THÀNH CÔNG*%0A%0A*Repo:* \`${{ github.repository }}\`%0A*Commit:* \`${{ github.sha }}\`%0A*Author:* ${{ github.actor }}%0A*Tag:* \`${{ env.IMAGE_TAG }}\`%0A*Security Check:* Passed (0 Critical CVE)%0A*Status:* Healthy (Nginx & FastAPI online)"
           curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             -d "chat_id=${TELEGRAM_CHAT_ID}" \
             -d "text=${MESSAGE}" \
@@ -108,4 +163,3 @@ jobs:
             -d "chat_id=${TELEGRAM_CHAT_ID}" \
             -d "text=${MESSAGE}" \
             -d "parse_mode=Markdown" > /dev/null || true
-
