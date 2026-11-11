@@ -22,6 +22,7 @@ DoAnCuoiKi/
 ├── nginx/
 │   ├── nginx.conf                     # Cấu hình lõi (epoll, rate limit zone, security headers)
 │   └── conf.d/
+│       ├── 00-upstream.conf           # Dynamic Upstream chuyển mạch Blue <-> Green
 │       └── app.conf                   # Reverse proxy, load balancing least_conn, timeouts
 ├── monitoring/
 │   ├── prometheus/
@@ -37,9 +38,10 @@ DoAnCuoiKi/
 ├── scripts/
 │   ├── setup_server.sh                # Hardening OS, UFW, Kernel sysctl, Docker, Crontab
 │   ├── service_manager.sh             # CLI quản trị runtime (đổi port, switch env, reload SIGHUP)
+│   ├── blue_green_deploy.sh           # Triển khai Blue-Green Zero-Downtime High Availability
 │   ├── auto_backup.sh                 # Cronjob dump PostgreSQL, nén gzip, hash sha256, báo Telegram
 │   └── healthcheck_rollback.sh        # Post-deploy HTTP probe & auto rollback container
-├── docker-compose.yml                 # Orchestration 9 services với network isolation & cgroups
+├── docker-compose.yml                 # Orchestration 10 services (DB, Blue, Green, Nginx, Prometheus, Grafana, Loki, Promtail, Node-Exp, cAdvisor)
 ├── .env.example                       # File mẫu biến môi trường
 └── README.md
 ```
@@ -68,6 +70,7 @@ cp .env.example .env
 
 ## 3. Các Công Cụ Quản Trị Hệ Thống (Custom Bash Scripts)
 - **Menu Quản trị:** `./scripts/service_manager.sh` (chạy interactive CLI hoặc truyền tham số)
+- **Chuyển mạch Blue-Green:** `./scripts/blue_green_deploy.sh [tag]` hoặc `./scripts/service_manager.sh deploy-bg`
 - **Đổi HTTP Port:** `./scripts/service_manager.sh set-port 8080`
 - **Chuyển môi trường:** `./scripts/service_manager.sh switch-env staging`
 - **Reload Nginx không gián đoạn:** `./scripts/service_manager.sh reload`

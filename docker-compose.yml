@@ -56,18 +56,63 @@ services:
         max-file: "3"
 
   # ==========================================
-  # 2. BACKEND API SERVICE (FastAPI Python)
+  # 2. BACKEND API SERVICES (Blue-Green Deployment)
   # ==========================================
-  app:
+  app_blue:
     build:
       context: ./app
       dockerfile: Dockerfile
-    image: ${APP_CONTAINER_IMAGE:-devops-app:1.0.0}
-    container_name: devops_app
+    image: ${APP_BLUE_IMAGE:-devops-app:1.0.0}
+    container_name: devops_app_blue
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:8001:8000"
     environment:
       APP_ENV: ${APP_ENV:-production}
-      APP_VERSION: ${APP_VERSION:-1.0.0}
+      APP_VERSION: ${APP_BLUE_VERSION:-1.0.0}
+      APP_COLOR: blue
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-devops_db}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-devops_secure_pass_2026}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend_net
+      - frontend_net
+      - monitoring_net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  app_green:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    image: ${APP_GREEN_IMAGE:-devops-app:1.0.0}
+    container_name: devops_app_green
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8002:8000"
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      APP_VERSION: ${APP_GREEN_VERSION:-1.0.0}
+      APP_COLOR: green
       DB_HOST: db
       DB_PORT: 5432
       DB_NAME: ${DB_NAME:-devops_db}
@@ -112,8 +157,7 @@ services:
       - ./frontend:/usr/share/nginx/html:ro
       - ./logs/nginx:/var/log/nginx
     depends_on:
-      app:
-        condition: service_healthy
+      - app_blue
     networks:
       - frontend_net
     healthcheck:

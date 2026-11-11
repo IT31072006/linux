@@ -67,6 +67,12 @@
                     <span class="text-slate-600">|</span>
                     <span class="text-slate-400">Tag:</span>
                     <span class="font-mono text-emerald-400" x-text="'v' + (stats.app_version || '1.0.0')"></span>
+                    <span class="text-slate-600">|</span>
+                    <span class="text-slate-400">Node:</span>
+                    <span class="font-bold uppercase px-1.5 py-0.5 rounded text-[11px]" 
+                          :class="(stats.deployment_color || 'blue') === 'blue' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'"
+                          x-text="(stats.deployment_color || 'blue') + ' active'">
+                    </span>
                 </div>
 
                 <a href="http://localhost:3000" target="_blank" class="text-xs bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/30 px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5">

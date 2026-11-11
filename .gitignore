@@ -18,6 +18,7 @@ htmlcov/
 # Sensitive Environment Variables (Security Best Practice)
 .env
 .last_stable_tag
+.active_color
 
 # Application Backups & Logs
 backups/*.sql

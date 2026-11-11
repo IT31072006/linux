@@ -61,6 +61,13 @@ show_status() {
     docker compose ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
 
     echo ""
+    local active_color="blue"
+    if [[ -f "${PROJECT_ROOT}/nginx/conf.d/00-upstream.conf" ]] && grep -q "app_green" "${PROJECT_ROOT}/nginx/conf.d/00-upstream.conf"; then
+        active_color="green"
+    fi
+    log_info "Mô hình Blue-Green Deployment: Node đang nhận Traffic = [${active_color^^}]"
+
+    echo ""
     log_info "Tài nguyên CPU / RAM tiêu thụ theo thời gian thực (Cgroups):"
     docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}"
 
@@ -203,10 +210,11 @@ interactive_menu() {
         echo -e " 4) Đổi HTTP Port (Runtime Port Switch)"
         echo -e " 5) Chuyển đổi môi trường (Staging <-> Production)"
         echo -e " 6) Reload Nginx không downtime (SIGHUP Signal)"
-        echo -e " 7) Xem live logs (FastAPI & Nginx)"
-        echo -e " 8) Thoát (Exit)"
+        echo -e " 7) Chuyển mạch Blue-Green Deployment (Zero-Downtime Switch)"
+        echo -e " 8) Xem live logs (FastAPI & Nginx)"
+        echo -e " 9) Thoát (Exit)"
         echo -e "${CYAN}----------------------------------------------------${NC}"
-        read -rp "Nhập lựa chọn của bạn [1-8]: " choice
+        read -rp "Nhập lựa chọn của bạn [1-9]: " choice
 
         case "$choice" in
             1) show_status ;;
@@ -215,8 +223,9 @@ interactive_menu() {
             4) set_port "" ;;
             5) switch_environment "" ;;
             6) reload_nginx ;;
-            7) view_logs "" ;;
-            8) echo -e "${GREEN}Tạm biệt!${NC}"; exit 0 ;;
+            7) "${PROJECT_ROOT}/scripts/blue_green_deploy.sh" "latest" ;;
+            8) view_logs "" ;;
+            9) echo -e "${GREEN}Tạm biệt!${NC}"; exit 0 ;;
             *) log_error "Lựa chọn không hợp lệ!" ;;
         esac
     done
@@ -244,11 +253,14 @@ case "${1:-}" in
     switch-env)
         switch_environment "${2:-}"
         ;;
+    deploy-bg|switch-color)
+        "${PROJECT_ROOT}/scripts/blue_green_deploy.sh" "${2:-latest}"
+        ;;
     logs)
         view_logs "${2:-}"
         ;;
     help|--help|-h)
-        echo "Sử dụng: $0 [status|start|stop|reload|set-port <port>|switch-env <env>|logs <service>]"
+        echo "Sử dụng: $0 [status|start|stop|reload|set-port <port>|switch-env <env>|deploy-bg [tag]|logs <service>]"
         echo "Nếu chạy không có tham số, CLI Interactive Menu sẽ tự động mở."
         ;;
     "")

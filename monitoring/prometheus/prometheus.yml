@@ -18,10 +18,10 @@ scrape_configs:
     static_configs:
       - targets: ['cadvisor:8080']
 
-  # 4. Giám sát APM của ứng dụng FastAPI
+  # 4. Giám sát APM của ứng dụng FastAPI (Blue & Green Instances)
   - job_name: 'fastapi_app'
     metrics_path: '/metrics'
     scrape_interval: 3s
     static_configs:
-      - targets: ['app:8000']
+      - targets: ['app_blue:8000', 'app_green:8000']
 

@@ -19,6 +19,7 @@ except ImportError:
 
 APP_VERSION = os.getenv("APP_VERSION", "1.0.0")
 APP_ENV = os.getenv("APP_ENV", "production")
+APP_COLOR = os.getenv("APP_COLOR", "blue")
 DB_HOST = os.getenv("DB_HOST", "db")
 DB_PORT = int(os.getenv("DB_PORT", "5432"))
 DB_NAME = os.getenv("DB_NAME", "devops_db")
@@ -125,6 +126,7 @@ def read_root(request: Request):
         "service": "DevOps Linux API",
         "version": APP_VERSION,
         "environment": APP_ENV,
+        "deployment_color": APP_COLOR,
         "kernel_os": "Ubuntu Linux",
         "message": "CI/CD & GitOps Pipeline successfully deployed!"
     }
@@ -143,7 +145,7 @@ def healthcheck():
     status_code = 200 if overall == "ok" else 503
 
     return Response(
-        content=f'{{"status": "{overall}", "version": "{APP_VERSION}", "database": "{db_status}"}}',
+        content=f'{{"status": "{overall}", "version": "{APP_VERSION}", "deployment_color": "{APP_COLOR}", "database": "{db_status}"}}',
         media_type="application/json",
         status_code=status_code
     )
@@ -220,6 +222,7 @@ def get_system_stats():
         "python_version": platform.python_version(),
         "app_version": APP_VERSION,
         "app_env": APP_ENV,
+        "deployment_color": APP_COLOR,
         "database": {
             "status": "online" if db_alive else "offline",
             "host": DB_HOST,

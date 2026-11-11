@@ -105,12 +105,12 @@ jobs:
             -d "parse_mode=Markdown" > /dev/null || true
 
   # ==========================================
-  # STAGE 3: Build, Zero-Downtime Deploy & Rollback
+  # STAGE 3: Blue-Green High Availability Deployment
   # ==========================================
   deploy:
-    name: 3. Build & Zero-Downtime Deploy
+    name: 3. Blue-Green Zero-Downtime Deploy
     needs: [test, security_scan]
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/developer'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -128,28 +128,16 @@ jobs:
           echo ">>> [CI/CD] Building Docker Image: devops-app:${IMAGE_TAG}..."
           docker build -t devops-app:${IMAGE_TAG} -t devops-app:latest ./app
 
-      - name: Apply Rolling Update to Docker Compose
+      - name: Execute Blue-Green Zero-Downtime Deployment
         run: |
-          echo ">>> [CI/CD] Cập nhật .env với version mới..."
-          sed -i "s/^APP_VERSION=.*/APP_VERSION=${IMAGE_TAG}/" .env || echo "APP_VERSION=${IMAGE_TAG}" >> .env
-          sed -i "s/^APP_CONTAINER_IMAGE=.*/APP_CONTAINER_IMAGE=devops-app:${IMAGE_TAG}/" .env || echo "APP_CONTAINER_IMAGE=devops-app:${IMAGE_TAG}" >> .env
-          
-          echo ">>> [CI/CD] Khởi động container app với image mới..."
-          docker compose up -d --no-deps app
-          
-          echo ">>> [CI/CD] Reload Nginx không downtime (SIGHUP)..."
-          docker compose exec -T nginx nginx -s reload
-
-      - name: Automated Healthcheck & Rollback Verification
-        run: |
-          echo ">>> [CI/CD] Kích hoạt kịch bản Healthcheck & Auto-Rollback..."
-          chmod +x scripts/healthcheck_rollback.sh
-          ./scripts/healthcheck_rollback.sh
+          echo ">>> [CI/CD] Kích hoạt kịch bản Blue-Green High Availability Deployment..."
+          chmod +x scripts/blue_green_deploy.sh
+          ./scripts/blue_green_deploy.sh "${IMAGE_TAG}"
 
       - name: Send Telegram Success Notification
         if: success()
         run: |
-          MESSAGE="✅ *CI/CD & DEVSECOPS DEPLOYMENT THÀNH CÔNG*%0A%0A*Repo:* \`${{ github.repository }}\`%0A*Commit:* \`${{ github.sha }}\`%0A*Author:* ${{ github.actor }}%0A*Tag:* \`${{ env.IMAGE_TAG }}\`%0A*Security Check:* Passed (0 Critical CVE)%0A*Status:* Healthy (Nginx & FastAPI online)"
+          MESSAGE="✅ *BLUE-GREEN DEPLOYMENT HOÀN TẤT (0ms DOWNTIME)*%0A%0A*Repo:* \`${{ github.repository }}\`%0A*Commit:* \`${{ github.sha }}\`%0A*Author:* ${{ github.actor }}%0A*Tag:* \`${{ env.IMAGE_TAG }}\`%0A*Security Gate:* Passed (0 Critical CVE)%0A*Nginx:* Upstream switched & reloaded via SIGHUP"
           curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             -d "chat_id=${TELEGRAM_CHAT_ID}" \
             -d "text=${MESSAGE}" \
@@ -158,7 +146,7 @@ jobs:
       - name: Send Telegram Failure Notification
         if: failure()
         run: |
-          MESSAGE="❌ *CI/CD DEPLOYMENT THẤT BẠI*%0A%0A*Repo:* \`${{ github.repository }}\`%0A*Commit:* \`${{ github.sha }}\`%0A*Author:* ${{ github.actor }}%0A*Action:* Rollback đã được kích hoạt tự động!"
+          MESSAGE="❌ *BLUE-GREEN DEPLOYMENT THẤT BẠI*%0A%0A*Repo:* \`${{ github.repository }}\`%0A*Commit:* \`${{ github.sha }}\`%0A*Author:* ${{ github.actor }}%0A*Trạng thái:* Quá trình chuyển mạch đã bị hủy, container Active được giữ nguyên an toàn!"
           curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             -d "chat_id=${TELEGRAM_CHAT_ID}" \
             -d "text=${MESSAGE}" \
