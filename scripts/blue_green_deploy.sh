@@ -201,3 +201,4 @@ echo -e "${BOLD}${GREEN}========================================================
 echo -e "${BOLD}${GREEN}  HOÀN TẤT BLUE-GREEN DEPLOYMENT: HIỆN TẠI LÀ [${TARGET_COLOR^^}] ACTIVE!  ${NC}"
 echo -e "${BOLD}${GREEN}================================================================${NC}"
 exit 0
+
