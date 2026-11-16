@@ -64,7 +64,13 @@ send_telegram_notification() {
 }
 
 # 1. Khởi tạo thư mục và bảo mật phân quyền Linux
-mkdir -p "$BACKUP_DIR"
+if ! mkdir -p "$BACKUP_DIR" 2>/dev/null; then
+    echo "[!] Không thể tạo thư mục '${BACKUP_DIR}' (quyền hạn). Chuyển hướng lưu backup về: ${PROJECT_ROOT}/backups"
+    BACKUP_DIR="${PROJECT_ROOT}/backups"
+    mkdir -p "$BACKUP_DIR"
+    BACKUP_FILEPATH="${BACKUP_DIR}/${BACKUP_FILENAME}"
+    CHECKSUM_FILEPATH="${BACKUP_FILEPATH}.sha256"
+fi
 # Chỉ cho phép owner đọc/ghi vào thư mục backup (Defense in Depth)
 chmod 700 "$BACKUP_DIR"
 

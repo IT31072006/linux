@@ -28,6 +28,8 @@ services:
     image: postgres:16-alpine
     container_name: devops_postgres
     restart: unless-stopped
+    ports:
+      - "${HOST_DB_PORT:-5433}:5432"
     environment:
       POSTGRES_DB: ${DB_NAME:-devops_db}
       POSTGRES_USER: ${DB_USER:-postgres}
@@ -37,6 +39,7 @@ services:
       - pg_data:/var/lib/postgresql/data
     networks:
       - backend_net
+      - frontend_net
     # Không mở port ra host để đảm bảo nguyên lý Defense in Depth
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-devops_db}"]
@@ -301,7 +304,7 @@ services:
   # 9. OBSERVABILITY: Log Shipper Agent (Promtail)
   # ==========================================
   promtail:
-    image: grafana/promtail:2.9.4
+    image: grafana/promtail:3.0.0
     container_name: devops_promtail
     restart: unless-stopped
     volumes:

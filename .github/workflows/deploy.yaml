@@ -69,7 +69,7 @@ jobs:
           echo ">>> [DevSecOps] Bắt đầu quét Secret lọt lộ mã nguồn với Gitleaks..."
           echo "=========================================================="
           docker run --rm -v "${{ github.workspace }}:/repo" \
-            zricethezav/gitleaks:latest detect --source="/repo" -v --config="/repo/.giteaks.toml" || \
+            zricethezav/gitleaks:latest detect --source="/repo" -v --config="/repo/.gitleaks.toml" || \
           docker run --rm -v "${{ github.workspace }}:/repo" \
             zricethezav/gitleaks:latest detect --source="/repo" -v
 
