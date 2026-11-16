@@ -48,6 +48,16 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $(date '+%Y-%m-%d %H:%M:%S') - $1" >&2
 }
 
+set_env_var() {
+    local key="$1"
+    local value="$2"
+    if grep -q "^${key}=" "$ENV_FILE"; then
+        sed -i "s|^${key}=.*|${key}=${value}|" "$ENV_FILE"
+    else
+        echo "${key}=${value}" >> "$ENV_FILE"
+    fi
+}
+
 send_telegram_notification() {
     local status="$1"
     local title="$2"
@@ -101,11 +111,11 @@ log_info "Mục tiêu triển khai: [${TARGET_COLOR^^}] (Cổng nội bộ probe
 cd "$PROJECT_ROOT"
 
 if [[ "$TARGET_COLOR" == "green" ]]; then
-    sed -i "s/^APP_GREEN_VERSION=.*/APP_GREEN_VERSION=${IMAGE_TAG}/" "$ENV_FILE" || echo "APP_GREEN_VERSION=${IMAGE_TAG}" >> "$ENV_FILE"
-    sed -i "s/^APP_GREEN_IMAGE=.*/APP_GREEN_IMAGE=devops-app:${IMAGE_TAG}/" "$ENV_FILE" || echo "APP_GREEN_IMAGE=devops-app:${IMAGE_TAG}" >> "$ENV_FILE"
+    set_env_var "APP_GREEN_VERSION" "${IMAGE_TAG}"
+    set_env_var "APP_GREEN_IMAGE" "devops-app:${IMAGE_TAG}"
 else
-    sed -i "s/^APP_BLUE_VERSION=.*/APP_BLUE_VERSION=${IMAGE_TAG}/" "$ENV_FILE" || echo "APP_BLUE_VERSION=${IMAGE_TAG}" >> "$ENV_FILE"
-    sed -i "s/^APP_BLUE_IMAGE=.*/APP_BLUE_IMAGE=devops-app:${IMAGE_TAG}/" "$ENV_FILE" || echo "APP_BLUE_IMAGE=devops-app:${IMAGE_TAG}" >> "$ENV_FILE"
+    set_env_var "APP_BLUE_VERSION" "${IMAGE_TAG}"
+    set_env_var "APP_BLUE_IMAGE" "devops-app:${IMAGE_TAG}"
 fi
 
 # 3. Khởi động Target Container (Idle) với phiên bản mới

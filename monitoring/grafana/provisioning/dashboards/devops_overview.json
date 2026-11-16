@@ -61,7 +61,7 @@
       "datasource": { "type": "prometheus", "uid": "Prometheus" },
       "targets": [
         {
-          "expr": "container_memory_usage_bytes{name=~\"app|nginx|db|loki|promtail\"} / 1024 / 1024",
+          "expr": "container_memory_usage_bytes{name=~\"devops_.*|.*(app|nginx|postgres|loki|promtail).*\"} / 1024 / 1024",
           "legendFormat": "{{name}}",
           "refId": "A"
         }
