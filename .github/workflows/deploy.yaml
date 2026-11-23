@@ -25,10 +25,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Source Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python Runtime
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: "pip"
@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Source Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Lấy toàn bộ commit history để Gitleaks quét lịch sử
 
@@ -114,7 +114,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set Image Tag and Metadata
         id: meta
@@ -123,16 +123,51 @@ jobs:
           echo "IMAGE_TAG=${SHORT_SHA}" >> $GITHUB_ENV
           echo "TIMESTAMP=$(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
 
+      - name: Setup Environment Config
+        run: |
+          echo ">>> [CI/CD] Khởi tạo cấu hình .env cho môi trường deployment..."
+          cp -n .env.example .env || true
+          sed -i "s|^HOST_HTTP_PORT=.*|HOST_HTTP_PORT=8088|" .env || echo "HOST_HTTP_PORT=8088" >> .env
+          mkdir -p logs/nginx
+
       - name: Build Official Docker Container Image
         run: |
           echo ">>> [CI/CD] Building Docker Image: devops-app:${IMAGE_TAG}..."
-          docker build -t devops-app:${IMAGE_TAG} -t devops-app:latest ./app
+          docker build -t devops-app:${IMAGE_TAG} -t devops-app:latest -t devops-app:1.0.0 ./app
+
+      - name: Bootstrap Base Infrastructure
+        run: |
+          echo ">>> [CI/CD] Khởi động hạ tầng cơ sở (PostgreSQL Database)..."
+          docker compose up -d db
+          echo ">>> [CI/CD] Đợi Database PostgreSQL sẵn sàng..."
+          for i in {1..30}; do
+            if docker compose exec -T db pg_isready -U postgres -d devops_db > /dev/null 2>&1; then
+              echo ">>> Database PostgreSQL đã sẵn sàng!"
+              break
+            fi
+            sleep 2
+          done
+
+          echo ">>> [CI/CD] Khởi động Active App Container (app_blue) và Gateway Nginx..."
+          docker compose up -d app_blue nginx
+          sleep 5
 
       - name: Execute Blue-Green Zero-Downtime Deployment
         run: |
           echo ">>> [CI/CD] Kích hoạt kịch bản Blue-Green High Availability Deployment..."
           chmod +x scripts/blue_green_deploy.sh
           ./scripts/blue_green_deploy.sh "${IMAGE_TAG}"
+
+      - name: Verify Post-Deployment Health
+        run: |
+          echo ">>> [CI/CD] Kiểm tra trạng thái phục vụ qua Nginx Gateway..."
+          GATEWAY_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8088/health || echo "000")
+          echo "Nginx Gateway Healthcheck Status: ${GATEWAY_STATUS}"
+          if [[ "${GATEWAY_STATUS}" != "200" ]]; then
+            echo "❌ Lỗi: Nginx Gateway không phản hồi HTTP 200!"
+            exit 1
+          fi
+          echo "✅ Nginx Gateway chuyển mạch thành công, phục vụ 100% lưu lượng trơn tru!"
 
       - name: Send Telegram Success Notification
         if: success()

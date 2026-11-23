@@ -23,7 +23,11 @@ ENV_FILE="${PROJECT_ROOT}/.env"
 UPSTREAM_CONF="${PROJECT_ROOT}/nginx/conf.d/00-upstream.conf"
 STATE_FILE="${PROJECT_ROOT}/.active_color"
 
-# Nạp biến môi trường từ .env
+# Nạp biến môi trường từ .env (tự tạo từ .env.example nếu chưa có)
+if [[ ! -f "$ENV_FILE" && -f "${PROJECT_ROOT}/.env.example" ]]; then
+    cp "${PROJECT_ROOT}/.env.example" "$ENV_FILE"
+fi
+
 if [[ -f "$ENV_FILE" ]]; then
     set -a
     # shellcheck disable=SC1090
@@ -51,6 +55,7 @@ log_error() {
 set_env_var() {
     local key="$1"
     local value="$2"
+    touch "$ENV_FILE"
     if grep -q "^${key}=" "$ENV_FILE"; then
         sed -i "s|^${key}=.*|${key}=${value}|" "$ENV_FILE"
     else
@@ -176,19 +181,23 @@ upstream backend_service {
 EOF
 
 # Kiểm tra cú pháp Nginx trước khi nạp lại
-if docker compose exec -T nginx nginx -t; then
+if docker compose exec -T nginx nginx -t 2>/dev/null; then
     log_info "Gửi tín hiệu POSIX SIGHUP tới Nginx Master Process để nạp lại upstream không downtime..."
     docker compose exec -T nginx nginx -s reload
     log_success "Nginx đã chuyển 100% lưu lượng sang '${TARGET_SERVICE}' thành công!"
 else
-    log_error "Cú pháp Nginx không hợp lệ! Khôi phục lại upstream cũ..."
-    cat << EOF > "$UPSTREAM_CONF"
+    if ! docker compose ps --services --filter "status=running" | grep -q "^nginx$"; then
+        log_error "Container 'devops_nginx' hiện chưa chạy! Không thể gửi tín hiệu reload tới Nginx."
+    else
+        log_error "Cú pháp Nginx không hợp lệ! Khôi phục lại upstream cũ..."
+        cat << EOF > "$UPSTREAM_CONF"
 upstream backend_service {
     least_conn;
     server ${ACTIVE_SERVICE}:8000 max_fails=3 fail_timeout=10s;
     keepalive 32;
 }
 EOF
+    fi
     exit 1
 fi
 
