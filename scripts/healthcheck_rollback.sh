@@ -108,15 +108,23 @@ echo ">>> [ACTION] Kích hoạt quy trình TỰ ĐỘNG ROLLBACK ngay lập tứ
 echo "=========================================================="
 
 # 1. Thu thập log cuối của container lỗi để phục vụ điều tra (Post-mortem)
-ERROR_LOGS=$(docker compose -f "${PROJECT_ROOT}/docker-compose.yml" logs --tail=20 app || echo "Không lấy được log")
+ACTIVE_SERVICE="app_blue"
+if [[ -f "${PROJECT_ROOT}/nginx/conf.d/00-upstream.conf" ]] && grep -q "app_green" "${PROJECT_ROOT}/nginx/conf.d/00-upstream.conf"; then
+    ACTIVE_SERVICE="app_green"
+fi
+ERROR_LOGS=$(docker compose -f "${PROJECT_ROOT}/docker-compose.yml" logs --tail=20 "${ACTIVE_SERVICE}" || echo "Không lấy được log")
 
 # 2. Khôi phục image stable cũ vào .env
-sed -i "s|^APP_CONTAINER_IMAGE=.*|APP_CONTAINER_IMAGE=${LAST_STABLE_IMAGE}|" "$ENV_FILE"
+if [[ "$ACTIVE_SERVICE" == "app_green" ]]; then
+    sed -i "s|^APP_GREEN_IMAGE=.*|APP_GREEN_IMAGE=${LAST_STABLE_IMAGE}|" "$ENV_FILE"
+else
+    sed -i "s|^APP_BLUE_IMAGE=.*|APP_BLUE_IMAGE=${LAST_STABLE_IMAGE}|" "$ENV_FILE"
+fi
 
 # 3. Re-deploy container với image stable
-echo "[+] Đang rollback container 'app' về: ${LAST_STABLE_IMAGE}..."
+echo "[+] Đang rollback container '${ACTIVE_SERVICE}' về: ${LAST_STABLE_IMAGE}..."
 cd "$PROJECT_ROOT"
-docker compose up -d --no-deps app
+docker compose up -d --no-deps "${ACTIVE_SERVICE}"
 docker compose exec -T nginx nginx -s reload || true
 
 # 4. Gửi tin nhắn khẩn cấp về Telegram

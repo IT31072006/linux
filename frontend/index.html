@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="vi" class="dark">
+<html lang="vi" class="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DevOps Linux Control Center & Dashboard</title>
+    <title>DevOps Linux Control Center</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -11,14 +11,15 @@
             darkMode: 'class',
             theme: {
                 extend: {
-                    colors: {
-                        brand: {
-                            50: '#eff6ff',
-                            500: '#3b82f6',
-                            600: '#2563eb',
-                            700: '#1d4ed8',
-                            900: '#1e3a8a'
-                        }
+                    fontFamily: {
+                        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace']
+                    },
+                    letterSpacing: {
+                        tightest: '-0.03em',
+                        tight: '-0.02em',
+                        normal: '0em',
+                        wide: '0.02em',
                     }
                 }
             }
@@ -26,314 +27,622 @@
     </script>
     <!-- Alpine.js CDN -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.5/dist/cdn.min.js"></script>
-    <!-- Google Fonts -->
+    <!-- Google Fonts: Inter & JetBrains Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
-        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            letter-spacing: -0.01em;
+        }
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
         [x-cloak] { display: none !important; }
+        
+        /* Utilitarian scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f4f4f5;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d4d4d8;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a1a1aa;
+        }
+
+        #terminal-console::-webkit-scrollbar-track {
+            background: #09090b;
+        }
+        #terminal-console::-webkit-scrollbar-thumb {
+            background: #27272a;
+            border-radius: 3px;
+        }
+        #terminal-console::-webkit-scrollbar-thumb:hover {
+            background: #3f3f46;
+        }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen antialiased flex flex-col" x-data="devopsApp()" x-init="initApp()" x-cloak>
+<body class="bg-zinc-50 text-zinc-900 min-h-screen antialiased flex flex-col selection:bg-zinc-200 selection:text-zinc-900" x-data="devopsApp()" x-init="initApp()" x-cloak>
 
-    <!-- TOP NAVBAR -->
-    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50 px-6 py-4">
-        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
-            <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"></path>
+    <!-- UTILITY TOPBAR -->
+    <header class="border-b border-zinc-200 bg-white sticky top-0 z-50 shadow-xs">
+        <div class="max-w-[1480px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+            
+            <!-- Left: Workspace Breadcrumb & Node Status -->
+            <div class="flex items-center gap-3.5">
+                <div class="w-8 h-8 rounded border border-zinc-200 bg-zinc-100 flex items-center justify-center text-zinc-700 shadow-xs">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect width="20" height="8" x="2" y="2" rx="2" ry="2"/>
+                        <rect width="20" height="8" x="2" y="14" rx="2" ry="2"/>
+                        <line x1="6" x2="6.01" y1="6" y2="6"/>
+                        <line x1="6" x2="6.01" y1="18" y2="18"/>
                     </svg>
                 </div>
-                <div>
-                    <h1 class="text-lg font-bold text-white flex items-center gap-2">
-                        Linux DevOps Control Center
-                        <span class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5 font-medium">
-                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                            Online
-                        </span>
-                    </h1>
-                    <p class="text-xs text-slate-400">Đồ án: Configure and Deploy DevOps Services in Linux (Ubuntu Server 22.04 / 24.04)</p>
+                <div class="flex items-center gap-2 text-sm">
+                    <span class="text-zinc-500 font-medium">infrastructure</span>
+                    <span class="text-zinc-300">/</span>
+                    <span class="text-zinc-900 font-bold tracking-tight">devops-control-plane</span>
+                </div>
+                <div class="h-4 w-px bg-zinc-200 hidden sm:block"></div>
+                <!-- Status indicator -->
+                <div class="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded border border-zinc-200 bg-zinc-100/90 text-xs font-mono text-zinc-700 font-medium">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span>ONLINE</span>
+                </div>
+                <!-- Active Node Pill -->
+                <div class="hidden md:flex items-center gap-2 font-mono text-xs px-2.5 py-1 rounded border shadow-xs"
+                     :class="(stats.deployment_color || 'blue') === 'blue' 
+                             ? 'border-blue-200 bg-blue-50 text-blue-700' 
+                             : 'border-emerald-200 bg-emerald-50 text-emerald-700'">
+                    <span class="uppercase font-bold" x-text="(stats.deployment_color || 'blue') + ' NODE ACTIVE'"></span>
+                    <span class="text-zinc-300">•</span>
+                    <span class="text-zinc-600 font-medium" x-text="'v' + (stats.app_version || '1.0.0')"></span>
                 </div>
             </div>
 
-            <!-- Quick Metrics Badges & External Links -->
-            <div class="flex items-center gap-3">
-                <div class="hidden sm:flex items-center gap-2 text-xs bg-slate-800/80 border border-slate-700/60 rounded-lg px-3 py-1.5">
-                    <span class="text-slate-400">Env:</span>
-                    <span class="font-semibold text-blue-400 uppercase" x-text="stats.app_env || 'PRODUCTION'"></span>
-                    <span class="text-slate-600">|</span>
-                    <span class="text-slate-400">Tag:</span>
-                    <span class="font-mono text-emerald-400" x-text="'v' + (stats.app_version || '1.0.0')"></span>
-                    <span class="text-slate-600">|</span>
-                    <span class="text-slate-400">Node:</span>
-                    <span class="font-bold uppercase px-1.5 py-0.5 rounded text-[11px]" 
-                          :class="(stats.deployment_color || 'blue') === 'blue' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'"
-                          x-text="(stats.deployment_color || 'blue') + ' active'">
-                    </span>
+            <!-- Right: External Observability Links & Server Clock -->
+            <div class="flex items-center gap-2.5">
+                <div class="hidden lg:flex items-center gap-2 mr-3 font-mono text-sm text-zinc-500 tabular-nums">
+                    <span class="text-xs uppercase text-zinc-400 font-semibold">Server Time:</span>
+                    <span class="text-zinc-800 font-semibold" x-text="stats.server_time || '--:--:--'"></span>
                 </div>
 
-                <a href="http://localhost:3000" target="_blank" class="text-xs bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/30 px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                    Grafana (:3000)
+                <a :href="'http://' + (window.location.hostname || 'localhost') + ':3000'" target="_blank" rel="noopener noreferrer"
+                   class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-zinc-200 bg-white hover:bg-zinc-50 hover:border-zinc-300 text-sm font-medium text-zinc-700 hover:text-zinc-900 transition-colors shadow-xs">
+                    <span>Grafana</span>
+                    <span class="text-zinc-400 font-mono text-xs">:3000</span>
+                    <svg class="w-3.5 h-3.5 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H7M17 7V17"/></svg>
                 </a>
 
-                <a href="http://localhost:9090" target="_blank" class="text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                    Prometheus (:9090)
+                <a :href="'http://' + (window.location.hostname || 'localhost') + ':9090'" target="_blank" rel="noopener noreferrer"
+                   class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-zinc-200 bg-white hover:bg-zinc-50 hover:border-zinc-300 text-sm font-medium text-zinc-700 hover:text-zinc-900 transition-colors shadow-xs">
+                    <span>Prometheus</span>
+                    <span class="text-zinc-400 font-mono text-xs">:9090</span>
+                    <svg class="w-3.5 h-3.5 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H7M17 7V17"/></svg>
                 </a>
 
-                <a href="/docs" target="_blank" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5">
-                    Swagger API
+                <a href="/docs" target="_blank" rel="noopener noreferrer"
+                   class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-zinc-200 bg-white hover:bg-zinc-50 hover:border-zinc-300 text-sm font-medium text-zinc-700 hover:text-zinc-900 transition-colors shadow-xs">
+                    <span>API Docs</span>
+                    <svg class="w-3.5 h-3.5 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H7M17 7V17"/></svg>
                 </a>
             </div>
+
         </div>
     </header>
 
-    <!-- MAIN WRAPPER -->
-    <main class="max-w-7xl mx-auto px-6 py-8 flex-1 w-full space-y-8">
+    <!-- MAIN CONTAINER (EXPANDED REAL ESTATE) -->
+    <main class="max-w-[1480px] mx-auto px-4 sm:px-6 lg:px-8 py-7 flex-1 w-full space-y-7">
 
-        <!-- 4 OVERVIEW METRICS CARDS -->
-        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <!-- Card 1: Linux Host OS -->
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition">
-                <div class="flex items-center justify-between text-slate-400 mb-2">
-                    <span class="text-xs font-medium uppercase tracking-wider">Hệ Điều Hành Host</span>
-                    <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+        <!-- TITLE BAR WITH ENVIRONMENT METADATA -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-3 border-b border-zinc-200">
+            <div>
+                <h1 class="text-xl sm:text-2xl font-bold text-zinc-900 tracking-tight flex items-center gap-3">
+                    Linux DevOps Control Center & Telemetry
+                    <span class="text-xs font-mono px-2.5 py-1 rounded border border-zinc-200 bg-zinc-100 text-zinc-700 font-semibold">
+                        Ubuntu Server 24.04 LTS
+                    </span>
+                </h1>
+                <p class="text-sm text-zinc-600 mt-1 leading-relaxed">
+                    Hệ thống phân phối microservices: Docker Compose • Blue-Green Zero-Downtime • Nginx Gateway • PostgreSQL 16 • Prometheus & Grafana Loki
+                </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2.5 text-xs font-mono">
+                <span class="text-zinc-500 font-medium">ENVIRONMENT:</span>
+                <span class="text-zinc-800 font-bold uppercase px-2 py-1 rounded bg-zinc-100 border border-zinc-200" x-text="stats.app_env || 'production'"></span>
+                <span class="text-zinc-500 font-medium ml-2">CPU ARCH:</span>
+                <span class="text-zinc-800 font-bold uppercase px-2 py-1 rounded bg-zinc-100 border border-zinc-200" x-text="stats.architecture || 'x86_64'"></span>
+                <span class="text-zinc-500 font-medium ml-2">GATEWAY PORT:</span>
+                <span class="text-zinc-800 font-bold px-2 py-1 rounded bg-zinc-100 border border-zinc-200">:8088</span>
+            </div>
+        </div>
+
+        <!-- TELEMETRY METRIC STRIP (LARGE READABLE NUMBERS & INTERNAL DIVIDERS) -->
+        <section class="border border-zinc-200 rounded-lg bg-white divide-y sm:divide-y-0 sm:divide-x divide-zinc-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 shadow-sm">
+            
+            <!-- Metric 1: Host OS -->
+            <div class="p-5 flex flex-col justify-between">
+                <div class="flex items-center justify-between text-zinc-400 mb-2">
+                    <span class="text-xs font-mono uppercase tracking-wider font-semibold text-zinc-500">01 / Host Environment</span>
+                    <svg class="w-4 h-4 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </div>
-                <div class="text-base font-bold text-white truncate" x-text="stats.os_platform || 'Ubuntu Linux 24.04 LTS'"></div>
-                <div class="text-xs text-slate-400 mt-1 font-mono" x-text="'Kernel: ' + (stats.kernel_release || 'Linux x86_64')"></div>
+                <div>
+                    <div class="text-base sm:text-lg font-bold text-zinc-900 tracking-tight truncate" x-text="stats.os_platform || 'Ubuntu Linux 24.04 LTS'"></div>
+                    <div class="text-xs sm:text-sm text-zinc-600 font-mono mt-1 truncate" x-text="'Kernel: ' + (stats.kernel_release || 'Linux x86_64')"></div>
+                </div>
             </div>
 
-            <!-- Card 2: Database Status -->
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition">
-                <div class="flex items-center justify-between text-slate-400 mb-2">
-                    <span class="text-xs font-medium uppercase tracking-wider">PostgreSQL Engine</span>
-                    <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+            <!-- Metric 2: PostgreSQL Engine -->
+            <div class="p-5 flex flex-col justify-between">
+                <div class="flex items-center justify-between text-zinc-400 mb-2">
+                    <span class="text-xs font-mono uppercase tracking-wider font-semibold text-zinc-500">02 / PostgreSQL Engine</span>
+                    <span class="w-2.5 h-2.5 rounded-full" :class="stats.database?.status === 'online' ? 'bg-emerald-500' : 'bg-red-500'"></span>
                 </div>
-                <div class="text-base font-bold text-emerald-400 flex items-center gap-1.5">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                    <span x-text="stats.database?.status === 'online' ? 'Connected (Healthy)' : 'Offline'"></span>
+                <div>
+                    <div class="text-base sm:text-lg font-bold tracking-tight flex items-center gap-2"
+                         :class="stats.database?.status === 'online' ? 'text-zinc-900' : 'text-red-600'">
+                        <span x-text="stats.database?.status === 'online' ? 'Active & Healthy' : 'Database Offline'"></span>
+                    </div>
+                    <div class="text-xs sm:text-sm text-zinc-600 font-mono mt-1 truncate" x-text="'DB: ' + (stats.database?.database_name || 'devops_db') + ' @ ' + (stats.database?.host || 'db') + ':' + (stats.database?.port || '5432')"></div>
                 </div>
-                <div class="text-xs text-slate-400 mt-1 font-mono" x-text="'DB: ' + (stats.database?.database_name || 'devops_db') + ' (Internal Net)'"></div>
             </div>
 
-            <!-- Card 3: Cgroups Resource Limits -->
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition">
-                <div class="flex items-center justify-between text-slate-400 mb-2">
-                    <span class="text-xs font-medium uppercase tracking-wider">Linux Cgroups v2 Limit</span>
-                    <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+            <!-- Metric 3: Cgroups Limits -->
+            <div class="p-5 flex flex-col justify-between">
+                <div class="flex items-center justify-between text-zinc-400 mb-2">
+                    <span class="text-xs font-mono uppercase tracking-wider font-semibold text-zinc-500">03 / Cgroups v2 Quota</span>
+                    <svg class="w-4 h-4 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
                 </div>
-                <div class="text-base font-bold text-white" x-text="'RAM: ' + (stats.cgroups_limits?.memory_limit || '512 MB')"></div>
-                <div class="text-xs text-slate-400 mt-1 font-mono" x-text="'CPU Quota: ' + (stats.cgroups_limits?.cpu_quota || '1.0 Core')"></div>
+                <div>
+                    <div class="text-base sm:text-lg font-bold text-zinc-900 font-mono tracking-tight" x-text="'RAM ' + (stats.cgroups_limits?.memory_limit || '512 MB') + ' • ' + (stats.cgroups_limits?.cpu_quota || '1.0 CPU')"></div>
+                    <div class="text-xs sm:text-sm text-zinc-600 font-mono mt-1 truncate" x-text="'Log Rotation: ' + (stats.cgroups_limits?.logging_rotation || '10MB x 3 files')"></div>
+                </div>
             </div>
 
-            <!-- Card 4: Nginx Gateway & Rate Limit -->
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition">
-                <div class="flex items-center justify-between text-slate-400 mb-2">
-                    <span class="text-xs font-medium uppercase tracking-wider">Nginx Rate Limit Gate</span>
-                    <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+            <!-- Metric 4: Nginx Gateway Protection -->
+            <div class="p-5 flex flex-col justify-between">
+                <div class="flex items-center justify-between text-zinc-400 mb-2">
+                    <span class="text-xs font-mono uppercase tracking-wider font-semibold text-zinc-500">04 / Gateway Rate Limit</span>
+                    <svg class="w-4 h-4 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                 </div>
-                <div class="text-base font-bold text-amber-400">15 req/sec</div>
-                <div class="text-xs text-slate-400 mt-1 font-mono">Burst: 10 nodelay (HTTP 429)</div>
+                <div>
+                    <div class="text-base sm:text-lg font-bold text-zinc-900 font-mono tracking-tight" x-text="stats.nginx_rate_limit || '15 req/sec (burst: 10)'"></div>
+                    <div class="text-xs sm:text-sm text-zinc-600 font-mono mt-1">HTTP 429 Protection • nodelay active</div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- 10 SERVICES INVENTORY (FILLS EMPTY SPACE WITH AUTHENTIC SYSTEM TOPOLOGY) -->
+        <section class="border border-zinc-200 rounded-lg bg-white p-5 shadow-sm space-y-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <svg class="w-4 h-4 text-zinc-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+                    <h2 class="text-sm font-bold text-zinc-900 uppercase tracking-wider font-mono">Bản Đồ 10 Microservices Đang Vận Hành (Docker Compose)</h2>
+                </div>
+                <span class="text-xs font-mono text-zinc-500 font-medium">10/10 Services Operational</span>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 pt-1">
+                <div class="p-3 rounded border border-zinc-200 bg-zinc-50 flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-mono font-bold text-zinc-900">devops_nginx</span>
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    </div>
+                    <div class="text-xs text-zinc-600 mt-2 font-mono">Gateway (:8088)</div>
+                </div>
+                <div class="p-3 rounded border border-zinc-200 bg-zinc-50 flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-mono font-bold text-blue-700">app_blue</span>
+                        <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                    </div>
+                    <div class="text-xs text-zinc-600 mt-2 font-mono">Core API (:8001)</div>
+                </div>
+                <div class="p-3 rounded border border-zinc-200 bg-zinc-50 flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-mono font-bold text-zinc-700">app_green</span>
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    </div>
+                    <div class="text-xs text-zinc-600 mt-2 font-mono">Standby (:8002)</div>
+                </div>
+                <div class="p-3 rounded border border-zinc-200 bg-zinc-50 flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-mono font-bold text-zinc-900">devops_postgres</span>
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    </div>
+                    <div class="text-xs text-zinc-600 mt-2 font-mono">Postgres 16 (:5433)</div>
+                </div>
+                <div class="p-3 rounded border border-zinc-200 bg-zinc-50 flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-mono font-bold text-zinc-900">prometheus</span>
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    </div>
+                    <div class="text-xs text-zinc-600 mt-2 font-mono">TSDB Store (:9090)</div>
+                </div>
+                <div class="p-3 rounded border border-zinc-200 bg-zinc-50 flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-mono font-bold text-zinc-900">grafana</span>
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    </div>
+                    <div class="text-xs text-zinc-600 mt-2 font-mono">Dashboard (:3000)</div>
+                </div>
+                <div class="p-3 rounded border border-zinc-200 bg-zinc-50 flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-mono font-bold text-zinc-900">loki</span>
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    </div>
+                    <div class="text-xs text-zinc-600 mt-2 font-mono">Log Store (:3100)</div>
+                </div>
+                <div class="p-3 rounded border border-zinc-200 bg-zinc-50 flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-mono font-bold text-zinc-900">promtail</span>
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    </div>
+                    <div class="text-xs text-zinc-600 mt-2 font-mono">Log Shipper Agent</div>
+                </div>
+                <div class="p-3 rounded border border-zinc-200 bg-zinc-50 flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-mono font-bold text-zinc-900">node_exporter</span>
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    </div>
+                    <div class="text-xs text-zinc-600 mt-2 font-mono">Host Exporter (:9100)</div>
+                </div>
+                <div class="p-3 rounded border border-zinc-200 bg-zinc-50 flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-mono font-bold text-zinc-900">cadvisor</span>
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    </div>
+                    <div class="text-xs text-zinc-600 mt-2 font-mono">Cgroups Monitor (:8080)</div>
+                </div>
             </div>
         </section>
 
-        <!-- TAB NAVIGATION -->
-        <div class="flex items-center space-x-2 border-b border-slate-800">
-            <button @click="activeTab = 'app'" :class="activeTab === 'app' ? 'border-blue-500 text-blue-400 font-semibold' : 'border-transparent text-slate-400 hover:text-slate-200'" class="px-5 py-3 border-b-2 text-sm transition flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
-                1. Ứng Dụng & Dữ Liệu (PostgreSQL CRUD)
+        <!-- TAB CONTROLS (EXPANDED FONTS & CLICK TARGETS) -->
+        <div class="flex items-center gap-8 border-b border-zinc-200 text-sm sm:text-base">
+            <button @click="activeTab = 'app'" 
+                    class="pb-3.5 border-b-2 font-bold tracking-tight transition-colors flex items-center gap-2.5"
+                    :class="activeTab === 'app' ? 'border-zinc-900 text-zinc-900' : 'border-transparent text-zinc-500 hover:text-zinc-800'">
+                <svg class="w-4 h-4 text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg>
+                <span>Dữ Liệu & Dịch Vụ (PostgreSQL CRUD)</span>
+                <span class="font-mono text-xs px-2 py-0.5 rounded bg-zinc-100 border border-zinc-200 text-zinc-700 font-semibold tabular-nums" x-text="items.length"></span>
             </button>
-            <button @click="activeTab = 'devops'" :class="activeTab === 'devops' ? 'border-blue-500 text-blue-400 font-semibold' : 'border-transparent text-slate-400 hover:text-slate-200'" class="px-5 py-3 border-b-2 text-sm transition flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                2. DevOps Control Center & Tự Động Hóa
+            <button @click="activeTab = 'devops'" 
+                    class="pb-3.5 border-b-2 font-bold tracking-tight transition-colors flex items-center gap-2.5"
+                    :class="activeTab === 'devops' ? 'border-zinc-900 text-zinc-900' : 'border-transparent text-zinc-500 hover:text-zinc-800'">
+                <svg class="w-4 h-4 text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
+                <span>Bảng Điều Khiển Vận Hành & Live Audit Console</span>
+                <span class="font-mono text-xs px-2 py-0.5 rounded bg-zinc-100 border border-zinc-200 text-zinc-700 font-semibold tabular-nums" x-text="terminalLogs.length + ' logs'"></span>
             </button>
         </div>
 
-        <!-- TAB 1: APPLICATION CRUD DEMO -->
+        <!-- TAB 1: APPLICATION CRUD VIEW -->
         <section x-show="activeTab === 'app'" class="space-y-6">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Form Thêm Record -->
-                <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm">
-                    <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
-                        <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                        Thêm Dữ Liệu Vào PostgreSQL
-                    </h3>
-                    <form @submit.prevent="addItem" class="space-y-4">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-7 items-start">
+                
+                <!-- Form Insert (Left: 4 cols) -->
+                <div class="lg:col-span-4 space-y-6">
+                    <div class="border border-zinc-200 rounded-lg bg-white p-6 space-y-5 shadow-sm">
                         <div>
-                            <label class="block text-xs font-medium text-slate-300 mb-1">Tên Dịch Vụ / Tác Vụ Linux</label>
-                            <input type="text" x-model="newItem.name" required placeholder="vd: Cấu hình UFW Firewall" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                            <h2 class="text-sm font-bold uppercase tracking-wider text-zinc-900 font-mono flex items-center gap-2">
+                                <svg class="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                Thêm Bản Ghi Tác Vụ Mới
+                            </h2>
+                            <p class="text-sm text-zinc-600 mt-1 leading-relaxed">
+                                Ghi dữ liệu trực tiếp vào bảng PostgreSQL thông qua REST API endpoint `/api/v1/items`.
+                            </p>
                         </div>
-                        <div>
-                            <label class="block text-xs font-medium text-slate-300 mb-1">Mô Tả Kỹ Thuật</label>
-                            <textarea x-model="newItem.description" rows="3" required placeholder="vd: Giới hạn port 22 SSH và mở 80 HTTP..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"></textarea>
-                        </div>
-                        <button type="submit" :disabled="isSubmitting" class="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-medium py-2 rounded-lg text-sm transition flex items-center justify-center gap-2">
-                            <span x-show="!isSubmitting">Lưu Vào Database</span>
-                            <span x-show="isSubmitting">Đang xử lý...</span>
-                        </button>
-                    </form>
-                </div>
 
-                <!-- Bảng Danh Sách Record -->
-                <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm flex flex-col">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
-                            Dữ Liệu Trong PostgreSQL (<span x-text="items.length"></span> bản ghi)
-                        </h3>
-                        <button @click="loadItems" class="text-xs text-slate-400 hover:text-white flex items-center gap-1 transition">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                            Làm mới
-                        </button>
+                        <form @submit.prevent="addItem" class="space-y-4 pt-1">
+                            <div>
+                                <label class="block text-sm font-semibold text-zinc-800 mb-1.5">
+                                    Tên Dịch Vụ / Tác Vụ Linux
+                                </label>
+                                <input type="text" x-model="newItem.name" required 
+                                       placeholder="vd: Cấu hình UFW Firewall" 
+                                       class="w-full bg-zinc-50 border border-zinc-200 focus:border-zinc-400 focus:bg-white rounded px-3.5 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none transition-colors font-mono">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold text-zinc-800 mb-1.5">
+                                    Mô Tả Kỹ Thuật Chi Tiết
+                                </label>
+                                <textarea x-model="newItem.description" rows="3" required 
+                                          placeholder="vd: Giới hạn port 22 SSH và mở 80 HTTP qua iptables..." 
+                                          class="w-full bg-zinc-50 border border-zinc-200 focus:border-zinc-400 focus:bg-white rounded px-3.5 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none transition-colors leading-relaxed"></textarea>
+                            </div>
+
+                            <!-- Primary Action -->
+                            <button type="submit" :disabled="isSubmitting" 
+                                    class="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 text-white font-semibold text-sm py-2.5 px-4 rounded transition-colors flex items-center justify-center gap-2 shadow-xs">
+                                <span x-show="!isSubmitting">Lưu Bản Ghi Vào Database</span>
+                                <span x-show="isSubmitting" class="flex items-center gap-2">
+                                    <svg class="animate-spin w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke-width="4" class="opacity-25"></circle><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" class="opacity-75"></path></svg>
+                                    <span>Đang ghi vào PostgreSQL...</span>
+                                </span>
+                            </button>
+                        </form>
                     </div>
 
-                    <div class="flex-1 overflow-x-auto">
-                        <table class="w-full text-left text-sm">
-                            <thead class="bg-slate-950/60 text-slate-400 text-xs uppercase font-mono">
+                    <!-- Informational Box (Fills empty space beneath the form!) -->
+                    <div class="border border-zinc-200 rounded-lg bg-white p-5 space-y-3 shadow-sm">
+                        <div class="flex items-center gap-2 text-xs font-mono font-bold text-zinc-800 uppercase tracking-wider">
+                            <svg class="w-4 h-4 text-zinc-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                            Thông Số Kỹ Thuật PostgreSQL
+                        </div>
+                        <div class="space-y-2 text-xs font-mono text-zinc-600 divide-y divide-zinc-100">
+                            <div class="flex justify-between pt-1">
+                                <span class="text-zinc-500">Host kết nối:</span>
+                                <span class="text-zinc-900 font-semibold">127.0.0.1:5433 (Host OS)</span>
+                            </div>
+                            <div class="flex justify-between pt-2">
+                                <span class="text-zinc-500">Mạng nội bộ:</span>
+                                <span class="text-zinc-900 font-semibold">db:5432 (backend_net)</span>
+                            </div>
+                            <div class="flex justify-between pt-2">
+                                <span class="text-zinc-500">Volume lưu trữ:</span>
+                                <span class="text-zinc-900 font-semibold">devops_pg_data</span>
+                            </div>
+                            <div class="flex justify-between pt-2">
+                                <span class="text-zinc-500">pgAdmin 4 Client:</span>
+                                <span class="text-emerald-700 font-semibold">Ready for connection</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table View (Right: 8 cols) -->
+                <div class="lg:col-span-8 border border-zinc-200 rounded-lg bg-white shadow-sm overflow-hidden flex flex-col">
+                    <!-- Table Toolbar with Search Input & Refresh -->
+                    <div class="px-5 py-3.5 border-b border-zinc-200 bg-zinc-50/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-sm font-bold text-zinc-900 uppercase tracking-wider font-mono">Bảng Dữ Liệu PostgreSQL</span>
+                            <span class="text-xs font-mono text-zinc-500 font-semibold tabular-nums" x-text="'(' + filteredItems.length + ' / ' + items.length + ' bản ghi)'"></span>
+                        </div>
+                        <div class="flex items-center gap-2.5">
+                            <!-- Quick Filter Input -->
+                            <div class="relative">
+                                <input type="text" x-model="searchQuery" placeholder="Lọc tác vụ..." 
+                                       class="bg-white border border-zinc-200 focus:border-zinc-400 rounded px-3 py-1.5 text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none w-44 font-mono transition-colors shadow-xs">
+                                <span x-show="searchQuery" @click="searchQuery = ''" class="absolute right-2 top-1.5 text-zinc-400 hover:text-zinc-700 cursor-pointer text-xs">✕</span>
+                            </div>
+                            <!-- Refresh Button -->
+                            <button @click="loadItems" class="text-xs font-mono font-medium text-zinc-700 hover:text-zinc-900 border border-zinc-200 bg-white hover:bg-zinc-50 px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 shadow-xs">
+                                <svg class="w-3.5 h-3.5 text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                                <span>Làm mới</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Dense Utilitarian Table with Legible Font -->
+                    <div class="overflow-x-auto min-h-[380px]">
+                        <table class="w-full text-left text-sm border-collapse">
+                            <thead class="bg-zinc-50 border-b border-zinc-200 text-xs font-mono text-zinc-600 uppercase tracking-wider">
                                 <tr>
-                                    <th class="p-3">ID</th>
-                                    <th class="p-3">Tác Vụ</th>
-                                    <th class="p-3">Mô Tả</th>
-                                    <th class="p-3">Thời Gian</th>
-                                    <th class="p-3 text-right">Thao Tác</th>
+                                    <th class="px-5 py-3.5 w-20">ID</th>
+                                    <th class="px-5 py-3.5 w-64">Tác Vụ</th>
+                                    <th class="px-5 py-3.5">Mô Tả Kỹ Thuật</th>
+                                    <th class="px-5 py-3.5 w-48">Thời Gian Ghi</th>
+                                    <th class="px-5 py-3.5 w-24 text-right">Thao Tác</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-800">
-                                <template x-for="item in items" :key="item.id">
-                                    <tr class="hover:bg-slate-800/40 transition">
-                                        <td class="p-3 font-mono text-slate-400" x-text="'#' + item.id"></td>
-                                        <td class="p-3 font-medium text-white" x-text="item.name"></td>
-                                        <td class="p-3 text-slate-300 text-xs" x-text="item.description"></td>
-                                        <td class="p-3 text-slate-500 text-xs font-mono" x-text="item.created_at"></td>
-                                        <td class="p-3 text-right">
-                                            <button @click="deleteItem(item.id)" class="text-red-400 hover:text-red-300 text-xs transition">
+                            <tbody class="divide-y divide-zinc-200/80 font-sans">
+                                <template x-for="item in filteredItems" :key="item.id">
+                                    <tr class="hover:bg-zinc-50/90 transition-colors">
+                                        <td class="px-5 py-4 font-mono font-bold text-zinc-500 tabular-nums" x-text="'#' + item.id"></td>
+                                        <td class="px-5 py-4 font-semibold text-zinc-900 text-sm sm:text-base" x-text="item.name"></td>
+                                        <td class="px-5 py-4 text-zinc-600 text-sm leading-relaxed" x-text="item.description"></td>
+                                        <td class="px-5 py-4 font-mono text-zinc-500 text-xs tabular-nums whitespace-nowrap" x-text="item.created_at"></td>
+                                        <td class="px-5 py-4 text-right">
+                                            <button @click="deleteItem(item.id)" 
+                                                    class="font-mono text-xs font-semibold text-zinc-500 hover:text-red-600 transition-colors px-2 py-1 rounded hover:bg-red-50">
                                                 Xóa
                                             </button>
                                         </td>
                                     </tr>
                                 </template>
-                                <tr x-show="items.length === 0">
-                                    <td colspan="5" class="p-8 text-center text-slate-500 text-sm">Chưa có dữ liệu nào trong PostgreSQL. Hãy thêm một bản ghi ở form bên cạnh!</td>
+                                <tr x-show="filteredItems.length === 0">
+                                    <td colspan="5" class="px-5 py-16 text-center text-zinc-500 text-sm font-mono">
+                                        Không tìm thấy bản ghi nào phù hợp. Hãy thêm một bản ghi mới ở form bên cạnh.
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
+
             </div>
         </section>
 
         <!-- TAB 2: DEVOPS CONTROL CENTER -->
-        <section x-show="activeTab === 'devops'" class="space-y-6">
-            <!-- 3 ACTIONS INTERACTIVE BUTTONS -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <section x-show="activeTab === 'devops'" class="space-y-7">
+            
+            <!-- 3 OPERATIONAL COMMAND CARDS (EXPANDED FONTS & PADDING) -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                
                 <!-- Action 1: Trigger Backup -->
-                <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between space-y-4">
+                <div class="border border-zinc-200 bg-white rounded-lg p-5 flex flex-col justify-between hover:border-zinc-300 transition-colors shadow-sm">
                     <div>
-                        <div class="flex items-center gap-2 text-blue-400 mb-1">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
-                            <h4 class="font-bold text-white text-sm">Tự Động Sao Lưu Database</h4>
-                        </div>
-                        <p class="text-xs text-slate-400">Xuất dữ liệu PostgreSQL, nén gzip dạng luồng, tạo mã hash SHA-256 xác thực tính toàn vẹn.</p>
+                        <div class="text-xs font-mono font-semibold text-zinc-500 uppercase tracking-wider">COMMAND 01 / SNAPSHOT</div>
+                        <h3 class="text-base font-bold text-zinc-900 tracking-tight mt-1.5">
+                            Tự Động Sao Lưu Cơ Sở Dữ Liệu
+                        </h3>
+                        <p class="text-sm text-zinc-600 mt-2 leading-relaxed">
+                            Xuất streaming PostgreSQL, nén gzip luồng và tính toán mã băm SHA-256 xác thực tính toàn vẹn tệp dump.
+                        </p>
                     </div>
-                    <button @click="triggerBackup" :disabled="isBackingUp" class="w-full bg-slate-800 hover:bg-slate-700 text-blue-400 font-medium py-2 rounded-lg text-sm border border-slate-700 transition flex items-center justify-center gap-2">
-                        <span x-show="!isBackingUp">Chạy Sao Lưu Ngay</span>
-                        <span x-show="isBackingUp" class="flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-blue-400 animate-ping"></span>
-                            Đang sao lưu...
-                        </span>
-                    </button>
+                    <div class="pt-5">
+                        <button @click="triggerBackup" :disabled="isBackingUp" 
+                                class="w-full border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-300 text-zinc-900 text-sm font-semibold py-2.5 px-4 rounded transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-xs">
+                            <span x-show="!isBackingUp">Chạy Sao Lưu Ngay</span>
+                            <span x-show="isBackingUp" class="flex items-center gap-2">
+                                <svg class="animate-spin w-4 h-4 text-zinc-700" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke-width="4" class="opacity-25"></circle><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" class="opacity-75"></path></svg>
+                                <span>Đang thực thi sao lưu...</span>
+                            </span>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Action 2: Stress Test (Trigger Rate Limit) -->
-                <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between space-y-4">
+                <div class="border border-zinc-200 bg-white rounded-lg p-5 flex flex-col justify-between hover:border-zinc-300 transition-colors shadow-sm">
                     <div>
-                        <div class="flex items-center gap-2 text-amber-400 mb-1">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                            <h4 class="font-bold text-white text-sm">Demo Stress Test (Nginx Rate Limit)</h4>
-                        </div>
-                        <p class="text-xs text-slate-400">Bắn đồng thời 40 requests để kích hoạt Nginx HTTP 429 và tạo bước sóng spike trên Grafana.</p>
+                        <div class="text-xs font-mono font-semibold text-zinc-500 uppercase tracking-wider">COMMAND 02 / TRAFFIC GATE</div>
+                        <h3 class="text-base font-bold text-zinc-900 tracking-tight mt-1.5">
+                            Kiểm Thử Nginx Rate Limiting
+                        </h3>
+                        <p class="text-sm text-zinc-600 mt-2 leading-relaxed">
+                            Gửi 40 HTTP requests đồng thời để kích hoạt ngưỡng bảo vệ 15 req/s (burst 10) và xác thực mã phản hồi HTTP 429.
+                        </p>
                     </div>
-                    <button @click="runStressTest" :disabled="isStressing" class="w-full bg-slate-800 hover:bg-slate-700 text-amber-400 font-medium py-2 rounded-lg text-sm border border-slate-700 transition flex items-center justify-center gap-2">
-                        <span x-show="!isStressing">Bắn 40 Requests Ngay</span>
-                        <span x-show="isStressing" class="flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
-                            Đang tạo tải...
-                        </span>
-                    </button>
+                    <div class="pt-5">
+                        <button @click="runStressTest" :disabled="isStressing" 
+                                class="w-full border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-300 text-zinc-900 text-sm font-semibold py-2.5 px-4 rounded transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-xs">
+                            <span x-show="!isStressing">Bắn 40 Requests Kiểm Thử</span>
+                            <span x-show="isStressing" class="flex items-center gap-2">
+                                <svg class="animate-spin w-4 h-4 text-zinc-700" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke-width="4" class="opacity-25"></circle><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" class="opacity-75"></path></svg>
+                                <span>Đang tạo tải song song...</span>
+                            </span>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Action 3: Health Probe Diagnostics -->
-                <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between space-y-4">
+                <div class="border border-zinc-200 bg-white rounded-lg p-5 flex flex-col justify-between hover:border-zinc-300 transition-colors shadow-sm">
                     <div>
-                        <div class="flex items-center gap-2 text-emerald-400 mb-1">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            <h4 class="font-bold text-white text-sm">Chẩn Đoán Health Probe</h4>
-                        </div>
-                        <p class="text-xs text-slate-400">Gửi probe kiểm tra endpoint /health để mô phỏng cơ chế kịch bản script rollback.</p>
+                        <div class="text-xs font-mono font-semibold text-zinc-500 uppercase tracking-wider">COMMAND 03 / HEALTHCHECK</div>
+                        <h3 class="text-base font-bold text-zinc-900 tracking-tight mt-1.5">
+                            Chẩn Đoán Synthetic Health Probe
+                        </h3>
+                        <p class="text-sm text-zinc-600 mt-2 leading-relaxed">
+                            Gửi probe trực tiếp tới endpoint `/health` kiểm tra kết nối DB và tính sẵn sàng của backend trong cơ chế rollback.
+                        </p>
                     </div>
-                    <button @click="checkHealth" :disabled="isCheckingHealth" class="w-full bg-slate-800 hover:bg-slate-700 text-emerald-400 font-medium py-2 rounded-lg text-sm border border-slate-700 transition flex items-center justify-center gap-2">
-                        <span x-show="!isCheckingHealth">Kiểm Tra Health Probe</span>
-                        <span x-show="isCheckingHealth">Đang probe...</span>
+                    <div class="pt-5">
+                        <button @click="checkHealth" :disabled="isCheckingHealth" 
+                                class="w-full border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-300 text-zinc-900 text-sm font-semibold py-2.5 px-4 rounded transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-xs">
+                            <span x-show="!isCheckingHealth">Kiểm Tra Health Probe</span>
+                            <span x-show="isCheckingHealth" class="flex items-center gap-2">
+                                <svg class="animate-spin w-4 h-4 text-zinc-700" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke-width="4" class="opacity-25"></circle><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" class="opacity-75"></path></svg>
+                                <span>Đang probe endpoint...</span>
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- RESULT INSPECTION DRAWER / BOX (IF ACTIVE) -->
+            <div x-show="alertInfo" class="border border-zinc-200 bg-zinc-50 rounded-lg p-5 transition-colors shadow-sm">
+                <div class="flex items-start justify-between gap-4">
+                    <div class="space-y-1.5 flex-1">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-2 h-2 rounded-full" :class="alertInfo?.type === 'success' ? 'bg-emerald-500' : 'bg-amber-500'"></span>
+                            <h4 class="text-sm font-mono font-bold uppercase tracking-wider text-zinc-900" x-text="alertInfo?.title"></h4>
+                        </div>
+                        <div class="font-mono text-sm text-zinc-800 whitespace-pre-line leading-relaxed pl-4 pt-1" x-text="alertInfo?.content"></div>
+                    </div>
+                    <button @click="alertInfo = null" class="text-zinc-400 hover:text-zinc-700 font-mono text-sm p-1">
+                        ✕ Đóng
                     </button>
                 </div>
             </div>
 
-            <!-- RESULT ALERT BOX (IF AVAILABLE) -->
-            <div x-show="alertInfo" class="bg-slate-900 border border-slate-700 rounded-xl p-4 transition" :class="alertInfo?.type === 'success' ? 'border-emerald-500/50 bg-emerald-950/20' : 'border-amber-500/50 bg-amber-950/20'">
-                <div class="flex items-start justify-between">
-                    <div>
-                        <h5 class="text-sm font-bold text-white flex items-center gap-2" x-text="alertInfo?.title"></h5>
-                        <p class="text-xs text-slate-300 mt-1 whitespace-pre-line font-mono" x-text="alertInfo?.content"></p>
-                    </div>
-                    <button @click="alertInfo = null" class="text-slate-400 hover:text-white text-xs">Đóng</button>
-                </div>
-            </div>
+            <!-- LOWER DUAL LAYOUT: AUTOMATION METRICS & LIVE TERMINAL (FILLS ALL REMAINING SPACE) -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                <!-- Left Details Box (5 cols) -->
+                <div class="lg:col-span-5 space-y-5">
+                    <div class="border border-zinc-200 rounded-lg bg-white p-5 shadow-sm space-y-4">
+                        <h4 class="text-sm font-mono font-bold uppercase tracking-wider text-zinc-900 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-zinc-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            Kịch Bản Vận Hành Tự Động (Cron & POSIX)
+                        </h4>
+                        
+                        <div class="space-y-3 text-xs sm:text-sm font-mono text-zinc-600">
+                            <div class="p-3 rounded bg-zinc-50 border border-zinc-200">
+                                <div class="font-bold text-zinc-900">01. Crontab Sao Lưu Hàng Ngày</div>
+                                <div class="text-xs text-zinc-500 mt-1 font-mono">0 2 * * * /scripts/auto_backup.sh</div>
+                                <div class="text-xs text-zinc-600 mt-1">Dump DB, nén gzip, mã hóa SHA-256 và giữ 7 ngày.</div>
+                            </div>
 
-            <!-- LIVE TERMINAL CONSOLE VIEWER -->
-            <div class="bg-black/90 border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
-                <!-- Console Header -->
-                <div class="bg-slate-900 px-4 py-2.5 border-b border-slate-800 flex items-center justify-between">
-                    <div class="flex items-center space-x-2">
-                        <span class="w-3 h-3 rounded-full bg-red-500/80 inline-block"></span>
-                        <span class="w-3 h-3 rounded-full bg-yellow-500/80 inline-block"></span>
-                        <span class="w-3 h-3 rounded-full bg-green-500/80 inline-block"></span>
-                        <span class="text-xs text-slate-400 font-mono ml-2">devops@ubuntu-server: ~/logs (Live Audit Console)</span>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <button @click="terminalLogs = []" class="text-xs text-slate-400 hover:text-slate-200 transition">Xóa console</button>
-                    </div>
-                </div>
+                            <div class="p-3 rounded bg-zinc-50 border border-zinc-200">
+                                <div class="font-bold text-zinc-900">02. Blue-Green Zero-Downtime</div>
+                                <div class="text-xs text-zinc-500 mt-1 font-mono">./scripts/blue_green_deploy.sh [version]</div>
+                                <div class="text-xs text-zinc-600 mt-1">Chuyển mạch bằng tín hiệu POSIX SIGHUP (0ms downtime).</div>
+                            </div>
 
-                <!-- Console Body -->
-                <div class="p-4 font-mono text-xs text-slate-300 space-y-1.5 h-64 overflow-y-auto">
-                    <template x-for="(log, idx) in terminalLogs" :key="idx">
-                        <div class="flex items-start gap-2">
-                            <span class="text-slate-500 select-none" x-text="log.time"></span>
-                            <span :class="{
-                                'text-blue-400': log.level === 'INFO',
-                                'text-emerald-400': log.level === 'SUCCESS',
-                                'text-amber-400': log.level === 'WARN',
-                                'text-red-400': log.level === 'ERROR'
-                            }" x-text="'[' + log.level + ']'"></span>
-                            <span class="text-slate-200" x-text="log.message"></span>
+                            <div class="p-3 rounded bg-zinc-50 border border-zinc-200">
+                                <div class="font-bold text-zinc-900">03. Healthcheck Probe & Rollback</div>
+                                <div class="text-xs text-zinc-500 mt-1 font-mono">./scripts/healthcheck_rollback.sh</div>
+                                <div class="text-xs text-zinc-600 mt-1">Tự động probe 5 lần và rollback nếu backend lỗi.</div>
+                            </div>
                         </div>
-                    </template>
-                    <div class="flex items-center text-emerald-400 animate-pulse pt-2">
-                        <span>devops@ubuntu:~$ █</span>
                     </div>
                 </div>
+
+                <!-- Live Terminal Console Viewer (Right: 7 cols - EXPANDED HEIGHT) -->
+                <div class="lg:col-span-7 border border-zinc-800 rounded-lg bg-zinc-950 overflow-hidden flex flex-col shadow-sm">
+                    <!-- Terminal Header Bar -->
+                    <div class="bg-zinc-900 px-5 py-3 border-b border-zinc-800 flex items-center justify-between">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                            <span class="text-sm font-mono text-zinc-200 font-semibold">devops@ubuntu-server: ~/audit-logs</span>
+                            <span class="hidden sm:inline-block text-xs font-mono text-zinc-400 px-2 py-0.5 rounded border border-zinc-700 bg-zinc-800">
+                                LIVE STDOUT
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs font-mono text-zinc-400 tabular-nums hidden sm:inline" x-text="terminalLogs.length + ' sự kiện ghi nhận'"></span>
+                            <button @click="terminalLogs = []" 
+                                    class="text-xs font-mono text-zinc-300 hover:text-white border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 rounded transition-colors font-medium">
+                                Xóa console
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Terminal Body Stream (High Readability Font & Size) -->
+                    <div id="terminal-console" class="p-5 font-mono text-sm text-zinc-300 space-y-1.5 h-[420px] overflow-y-auto leading-relaxed select-text bg-zinc-950">
+                        <template x-for="(log, idx) in terminalLogs" :key="idx">
+                            <div class="flex items-start gap-2.5">
+                                <span class="text-zinc-500 select-none tabular-nums text-xs pt-0.5" x-text="log.time"></span>
+                                <span class="font-bold text-xs" :class="{
+                                    'text-zinc-400': log.level === 'INFO',
+                                    'text-emerald-400': log.level === 'SUCCESS',
+                                    'text-amber-400': log.level === 'WARN',
+                                    'text-red-400': log.level === 'ERROR'
+                                }" x-text="'[' + log.level + ']'"></span>
+                                <span class="text-zinc-200 break-all leading-normal" x-text="log.message"></span>
+                            </div>
+                        </template>
+                        <div class="flex items-center text-emerald-400 pt-3 font-mono text-sm">
+                            <span>devops@ubuntu-server:~$ </span>
+                            <span class="animate-pulse ml-1 inline-block w-2.5 h-4 bg-emerald-400"></span>
+                        </div>
+                    </div>
+                </div>
+
             </div>
+
         </section>
 
     </main>
 
     <!-- FOOTER -->
-    <footer class="border-t border-slate-800 py-6 px-6 text-center text-xs text-slate-500 bg-slate-950">
-        Đồ án Môn học: Linux và Phần mềm Nguồn Mở | Pipeline: Gitea Actions • Docker Compose • Nginx • PostgreSQL • Prometheus • Grafana
+    <footer class="border-t border-zinc-200 py-6 px-4 sm:px-6 lg:px-8 bg-white text-sm text-zinc-500 font-mono">
+        <div class="max-w-[1480px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div>
+                Đồ án Môn học: Linux & Phần Mềm Nguồn Mở • Ubuntu Server 24.04 LTS
+            </div>
+            <div class="text-zinc-400">
+                Pipeline: Gitea Actions • Nginx Gateway • PostgreSQL 16 • Prometheus • Grafana Loki
+            </div>
+        </div>
     </footer>
 
     <!-- JAVASCRIPT LOGIC -->
@@ -341,6 +650,7 @@
         function devopsApp() {
             return {
                 activeTab: 'app',
+                searchQuery: '',
                 stats: {},
                 items: [],
                 newItem: { name: '', description: '' },
@@ -351,10 +661,28 @@
                 alertInfo: null,
                 terminalLogs: [],
 
+                get filteredItems() {
+                    if (!this.searchQuery) return this.items;
+                    const q = this.searchQuery.toLowerCase();
+                    return this.items.filter(i => 
+                        (i.name && i.name.toLowerCase().includes(q)) || 
+                        (i.description && i.description.toLowerCase().includes(q)) ||
+                        (String(i.id).includes(q))
+                    );
+                },
+
                 addLog(level, message) {
                     const now = new Date().toTimeString().split(' ')[0];
                     this.terminalLogs.push({ time: now, level, message });
-                    if (this.terminalLogs.length > 100) this.terminalLogs.shift();
+                    if (this.terminalLogs.length > 200) this.terminalLogs.shift();
+                    
+                    // Auto-scroll terminal log window to bottom
+                    this.$nextTick(() => {
+                        const consoleEl = document.getElementById('terminal-console');
+                        if (consoleEl) {
+                            consoleEl.scrollTop = consoleEl.scrollHeight;
+                        }
+                    });
                 },
 
                 async initApp() {
@@ -399,7 +727,7 @@
                         if (res.ok) {
                             const created = await res.json();
                             this.items.unshift(created.data);
-                            this.addLog('SUCCESS', `Đã INSERT item #${created.data.id} ('${created.data.name}') vào bảng PostgreSQL items`);
+                            this.addLog('SUCCESS', `INSERT item #${created.data.id} ('${created.data.name}') vào bảng PostgreSQL items`);
                             this.newItem = { name: '', description: '' };
                         }
                     } catch (e) {
@@ -414,7 +742,7 @@
                         const res = await fetch(`/api/v1/items/${id}`, { method: 'DELETE' });
                         if (res.ok) {
                             this.items = this.items.filter(item => item.id !== id);
-                            this.addLog('WARN', `Đã DELETE item #${id} khỏi cơ sở dữ liệu`);
+                            this.addLog('WARN', `DELETE item #${id} khỏi cơ sở dữ liệu`);
                         }
                     } catch (e) {
                         this.addLog('ERROR', `Lỗi xóa item #${id}`);
@@ -430,10 +758,10 @@
                             const data = await res.json();
                             this.alertInfo = {
                                 type: 'success',
-                                title: '✅ Sao Lưu Database Thành Công!',
-                                content: `• File: ${data.backup_file}\n• Records: ${data.records_count}\n• SHA-256 Checksum: ${data.sha256_checksum}\n• Size: ${data.size_human}`
+                                title: 'SAO LƯU DATABASE HOÀN TẤT',
+                                content: `• Tệp sao lưu: ${data.backup_file}\n• Số lượng bản ghi: ${data.records_count}\n• SHA-256 Checksum: ${data.sha256_checksum}\n• Dung lượng: ${data.size_human}\n• Chính sách lưu trữ: ${data.retention_policy || '7 days auto-cleanup'}`
                             };
-                            this.addLog('SUCCESS', `Tệp sao lưu: ${data.backup_file} | SHA256: ${data.sha256_checksum.substring(0, 16)}...`);
+                            this.addLog('SUCCESS', `Tệp sao lưu: ${data.backup_file} | SHA-256: ${data.sha256_checksum.substring(0, 16)}...`);
                         }
                     } catch (e) {
                         this.addLog('ERROR', 'Kích hoạt sao lưu thất bại!');
@@ -444,7 +772,7 @@
 
                 async runStressTest() {
                     this.isStressing = true;
-                    this.addLog('WARN', 'Bắt đầu bắn 40 requests liên tiếp vào Nginx Gateway để kích hoạt Rate Limiting...');
+                    this.addLog('WARN', 'Bắt đầu gửi 40 requests đồng thời tới Nginx Gateway để kiểm tra Rate Limiter...');
                     let okCount = 0;
                     let rateLimited = 0;
 
@@ -461,10 +789,10 @@
 
                     this.alertInfo = {
                         type: 'warning',
-                        title: '⚡ Kết Quả Stress Test (Nginx Rate Limiting)',
-                        content: `• Requests hoàn thành: 40\n• HTTP 200 OK: ${okCount}\n• HTTP 429 Too Many Requests (Rate Limited): ${rateLimited}\n→ Nginx đã kích hoạt cơ chế bảo vệ thành công! Hãy mở Grafana để thấy spike.`
+                        title: 'KẾT QUẢ KIỂM THỬ NGINX RATE LIMITING',
+                        content: `• Tổng số requests: 40\n• HTTP 200 OK: ${okCount}\n• HTTP 429 Too Many Requests (Rate Limited): ${rateLimited}\n→ Cơ chế Nginx rate limiting (15 req/s, burst 10) đã kích hoạt thành công.`
                     };
-                    this.addLog('WARN', `Stress Test hoàn tất: ${okCount} OK (200), ${rateLimited} bị chặn bởi Rate Limiter (429)!`);
+                    this.addLog('WARN', `Stress test hoàn tất: ${okCount} OK (200), ${rateLimited} bị chặn bởi Rate Limiter (429).`);
                 },
 
                 async checkHealth() {
@@ -477,12 +805,12 @@
                         const data = await res.json();
                         this.alertInfo = {
                             type: 'success',
-                            title: '💚 Health Probe Diagnostic: 200 OK',
-                            content: `• Status: ${data.status}\n• App Version: ${data.version}\n• Database: ${data.database}\n• Latency: ${latency} ms`
+                            title: 'SYNTHETIC HEALTH PROBE: 200 OK',
+                            content: `• Trạng thái hệ thống: ${data.status}\n• Phiên bản ứng dụng: ${data.version}\n• Màu node triển khai: ${data.deployment_color}\n• Cơ sở dữ liệu: ${data.database}\n• Thời gian phản hồi (latency): ${latency} ms`
                         };
                         this.addLog('SUCCESS', `Health probe: status=${data.status}, db=${data.database} (${latency}ms)`);
                     } catch (e) {
-                        this.addLog('ERROR', 'Health probe failed!');
+                        this.addLog('ERROR', 'Health probe thất bại!');
                     } finally {
                         this.isCheckingHealth = false;
                     }
@@ -492,4 +820,3 @@
     </script>
 </body>
 </html>
-

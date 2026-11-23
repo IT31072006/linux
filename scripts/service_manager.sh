@@ -153,8 +153,8 @@ switch_environment() {
     fi
 
     cd "$PROJECT_ROOT"
-    log_info "Cập nhật runtime FastAPI container..."
-    docker compose up -d --no-deps app
+    log_info "Cập nhật runtime FastAPI containers (Blue & Green)..."
+    docker compose up -d --no-deps app_blue app_green
 
     log_success "Chuyển môi trường sang [${target_env}] hoàn tất!"
 }

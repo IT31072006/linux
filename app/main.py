@@ -257,7 +257,9 @@ def trigger_backup():
             dump_content += f"-- Exported at: {datetime.now().isoformat()}\n"
             dump_content += f"-- Total records: {len(rows)}\n\n"
             for r in rows:
-                dump_content += f"INSERT INTO items (id, name, description) VALUES ({r['id']}, '{r['name']}', '{r['description']}');\n"
+                name_val = str(r['name']).replace("'", "''")
+                desc_val = str(r.get('description', '') or '').replace("'", "''")
+                dump_content += f"INSERT INTO items (id, name, description) VALUES ({r['id']}, '{name_val}', '{desc_val}');\n"
             
             sha256_hash = hashlib.sha256(dump_content.encode("utf-8")).hexdigest()
             size_bytes = len(dump_content.encode("utf-8"))
