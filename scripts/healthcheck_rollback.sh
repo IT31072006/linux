@@ -13,7 +13,11 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 ENV_FILE="${PROJECT_ROOT}/.env"
 STABLE_TAG_FILE="${PROJECT_ROOT}/.last_stable_tag"
 
-# Nạp biến môi trường
+# Nạp biến môi trường (tự tạo từ .env.example nếu chưa có)
+if [[ ! -f "$ENV_FILE" && -f "${PROJECT_ROOT}/.env.example" ]]; then
+    cp "${PROJECT_ROOT}/.env.example" "$ENV_FILE"
+fi
+
 if [[ -f "$ENV_FILE" ]]; then
     set -a
     # shellcheck disable=SC1090
