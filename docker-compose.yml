@@ -17,8 +17,6 @@ volumes:
     name: devops_prometheus_data
   grafana_data:
     name: devops_grafana_data
-  loki_data:
-    name: devops_loki_data
 
 services:
   # ==========================================
@@ -204,31 +202,7 @@ services:
           memory: 128M
 
   # ==========================================
-  # 5. OBSERVABILITY: Container Metrics (cAdvisor)
-  # ==========================================
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.47.2
-    container_name: devops_cadvisor
-    restart: unless-stopped
-    privileged: true
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-      - /dev/disk/:/dev/disk:ro
-    devices:
-      - /dev/kmsg
-    networks:
-      - monitoring_net
-    deploy:
-      resources:
-        limits:
-          cpus: "0.3"
-          memory: 256M
-
-  # ==========================================
-  # 6. OBSERVABILITY: Metrics Store (Prometheus)
+  # 5. OBSERVABILITY: Metrics Store (Prometheus)
   # ==========================================
   prometheus:
     image: prom/prometheus:v2.51.0
@@ -253,7 +227,7 @@ services:
           memory: 512M
 
   # ==========================================
-  # 7. OBSERVABILITY: Visualization (Grafana)
+  # 6. OBSERVABILITY: Visualization (Grafana)
   # ==========================================
   grafana:
     image: grafana/grafana:10.4.0
@@ -270,7 +244,6 @@ services:
       - grafana_data:/var/lib/grafana
     depends_on:
       - prometheus
-      - loki
     networks:
       - monitoring_net
     deploy:
@@ -278,48 +251,4 @@ services:
         limits:
           cpus: "0.5"
           memory: 256M
-
-  # ==========================================
-  # 8. OBSERVABILITY: Centralized Log Store (Loki)
-  # ==========================================
-  loki:
-    image: grafana/loki:2.9.4
-    container_name: devops_loki
-    restart: unless-stopped
-    ports:
-      - "3100:3100"
-    volumes:
-      - ./monitoring/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
-      - loki_data:/loki
-    command: -config.file=/etc/loki/local-config.yaml
-    networks:
-      - monitoring_net
-    deploy:
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: 200M # Tối ưu dung lượng RAM < 256MB theo yêu cầu
-
-  # ==========================================
-  # 9. OBSERVABILITY: Log Shipper Agent (Promtail)
-  # ==========================================
-  promtail:
-    image: grafana/promtail:3.0.0
-    container_name: devops_promtail
-    restart: unless-stopped
-    volumes:
-      - ./monitoring/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
-      - ./logs/nginx:/var/log/nginx:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    command: -config.file=/etc/promtail/config.yml
-    depends_on:
-      - loki
-    networks:
-      - monitoring_net
-    deploy:
-      resources:
-        limits:
-          cpus: "0.2"
-          memory: 128M
 

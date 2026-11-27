@@ -1,47 +1,47 @@
 # Đồ Án Môn Học: Linux & Phần Mềm Nguồn Mở
 ## Đề Tài: "Configure and Deploy DevOps Services in Linux"
 **Hệ điều hành mục tiêu:** Ubuntu Server 22.04 / 24.04 LTS  
-**Kiến trúc:** Containerized GitOps & CI/CD Pipeline (Gitea Actions, Docker Compose, Nginx, PostgreSQL, Prometheus, Grafana, Bash Automation)
+**Trọng tâm kỹ thuật:** Tập trung chuyên sâu vào **2 dịch vụ mã nguồn mở cốt lõi** trên Linux:
+1. **Nginx Gateway & High Availability:** Reverse Proxy, Rate Limiting (chống DoS), và triển khai không gián đoạn (**Blue-Green Deployment** qua tín hiệu `POSIX SIGHUP`).
+2. **Prometheus & Grafana Monitoring:** Thu thập chỉ số hệ điều hành Linux từ `/proc`, `/sys` (`Node Exporter`) và trực quan hóa hiệu năng Request Rate / Latency theo thời gian thực.
+
+*(Kèm ứng dụng mẫu FastAPI + PostgreSQL và bộ Bash Scripts tự động hóa quản trị Linux).*
 
 ---
 
 ## 1. Cấu Trúc Thư Mục Dự Án
 ```text
 DoAnCuoiKi/
-├── .gitea/
-│   └── workflows/
-│       └── deploy.yaml                # Pipeline CI/CD tự động (Lint, Test, Build, Deploy, Rollback)
+├── .gitea/workflows/deploy.yaml       # Pipeline CI/CD tự động (Gitea Actions)
+├── .github/workflows/deploy.yaml      # Pipeline CI/CD tự động (GitHub Actions)
 ├── frontend/
-│   └── index.html                     # Web Dashboard & DevOps Control Center (Tailwind + Alpine.js)
+│   └── index.html                     # Web Dashboard & DevOps Control Center
 ├── app/
-│   ├── main.py                        # FastAPI Backend tích hợp Prometheus metrics & DB checks
+│   ├── main.py                        # Sample FastAPI Backend tích hợp Prometheus metrics
 │   ├── requirements.txt               # Thư viện Python phụ thuộc
-│   ├── Dockerfile                     # Multi-stage Dockerfile chạy non-root user
-│   └── tests/
-│       └── test_main.py               # Unit Test Suite (pytest)
+│   ├── Dockerfile                     # Multi-stage Dockerfile chạy non-root user (UID 10001)
+│   └── tests/test_main.py             # Unit Test Suite (pytest)
 ├── nginx/
-│   ├── nginx.conf                     # Cấu hình lõi (epoll, rate limit zone, security headers)
+│   ├── nginx.conf                     # Cấu hình lõi Nginx (epoll, rate limit zone, JSON log)
 │   └── conf.d/
 │       ├── 00-upstream.conf           # Dynamic Upstream chuyển mạch Blue <-> Green
-│       └── app.conf                   # Reverse proxy, load balancing least_conn, timeouts
+│       └── app.conf                   # Reverse proxy, load balancing least_conn, OWASP headers
 ├── monitoring/
 │   ├── prometheus/
-│   │   └── prometheus.yml             # Cấu hình scrape Node Exporter, cAdvisor, FastAPI
-│   ├── loki/
-│   │   └── loki-config.yml            # Centralized Logging TSDB Engine (< 200MB RAM)
-│   ├── promtail/
-│   │   └── promtail-config.yml        # Nginx JSON log parser & Docker socket log collector
+│   │   └── prometheus.yml             # Cấu hình scrape Node Exporter & FastAPI metrics
 │   └── grafana/
-│       └── provisioning/              # Auto-provisioning Datasource (Prometheus, Loki) & Dashboard
+│       └── provisioning/              # Auto-provisioning Datasource (Prometheus) & Dashboard
 ├── logs/
-│   └── nginx/                         # Thư mục lưu access.log (JSON) và error.log của Nginx
+│   └── nginx/                         # Thư mục lưu access.log và error.log của Nginx
 ├── scripts/
 │   ├── setup_server.sh                # Hardening OS, UFW, Kernel sysctl, Docker, Crontab
 │   ├── service_manager.sh             # CLI quản trị runtime (đổi port, switch env, reload SIGHUP)
 │   ├── blue_green_deploy.sh           # Triển khai Blue-Green Zero-Downtime High Availability
 │   ├── auto_backup.sh                 # Cronjob dump PostgreSQL, nén gzip, hash sha256, báo Telegram
-│   └── healthcheck_rollback.sh        # Post-deploy HTTP probe & auto rollback container
-├── docker-compose.yml                 # Orchestration 10 services (DB, Blue, Green, Nginx, Prometheus, Grafana, Loki, Promtail, Node-Exp, cAdvisor)
+│   ├── healthcheck_rollback.sh        # Post-deploy HTTP probe & auto rollback container
+│   ├── benchmark_stress.sh            # Tạo tải giả lập demo Rate Limiting & Grafana Spike
+│   └── generate_ssl.sh                # Tạo chứng chỉ SSL/TLS self-signed với OpenSSL
+├── docker-compose.yml                 # Orchestration 7 containers gọn nhẹ với network isolation
 ├── .env.example                       # File mẫu biến môi trường
 └── README.md
 ```
@@ -75,15 +75,14 @@ cp .env.example .env
 - **Chuyển môi trường:** `./scripts/service_manager.sh switch-env staging`
 - **Reload Nginx không gián đoạn:** `./scripts/service_manager.sh reload`
 - **Sao lưu DB thủ công:** `./scripts/auto_backup.sh`
+- **Giả lập Stress Test (Demo):** `./scripts/benchmark_stress.sh`
 - **Kiểm tra Healthcheck & Rollback:** `./scripts/healthcheck_rollback.sh`
 
 ---
 
 ## 4. Truy Cập Dịch Vụ
-- **Web Dashboard & DevOps Control Center:** `http://<SERVER_IP>/`
+- **Web Dashboard & DevOps Control Center:** `http://<SERVER_IP>/` (hoặc `:8088` nếu cấu hình `HOST_HTTP_PORT=8088`)
 - **Swagger API Interactive Docs:** `http://<SERVER_IP>/docs`
 - **Healthcheck Probe:** `http://<SERVER_IP>/health`
 - **Prometheus UI:** `http://<SERVER_IP>:9090`
-- **Loki Log Gateway:** `http://<SERVER_IP>:3100/ready`
-- **Grafana Dashboard (Metrics & Logs):** `http://<SERVER_IP>:3000` (User: `admin` / Pass: `admin_devops_password`)
-
+- **Grafana Dashboard (Host OS & Nginx/API Metrics):** `http://<SERVER_IP>:3000` (User: `admin` / Pass: `admin_devops_password`)
